@@ -75,7 +75,7 @@ export function chairBriefingPrompt(params: {
   meetingPlanJson: string;
   transcriptText: string;
 }): string {
-  return `You are the Chair. The board session has finished. Using the user's original brief, the meeting plan you designed, and the full transcript, produce the owner's structured briefing.
+  return `You are the Chair. The board session has finished. Using the user's original brief, the meeting plan you designed, and the full transcript, produce the owner's structured briefing. You shall assume the reader is smart but not trained in this domain of discussion.
 
 Original brief:
 ---
