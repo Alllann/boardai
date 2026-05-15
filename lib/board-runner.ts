@@ -1,4 +1,3 @@
-import { Agent, CursorAgentError } from "@cursor/sdk";
 import type { AgentOptions } from "@cursor/sdk";
 
 import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
@@ -39,6 +38,7 @@ async function runPromptForText(
   prompt: string,
   options: AgentOptions,
 ): Promise<{ text: string; runId: string }> {
+  const { Agent, CursorAgentError } = await import("@cursor/sdk");
   try {
     const result = await Agent.prompt(prompt, options);
     if (result.status === "error") {

@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "smoke:board": "tsx scripts/smoke-board.ts"
   },
   "dependencies": {
     "@cursor/sdk": "^1.0.13",
@@ -25,5 +26,14 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@cursor/sdk-win32-x64",
+      "esbuild",
+      "sharp",
+      "sqlite3",
+      "unrs-resolver"
+    ]
   }
 }
