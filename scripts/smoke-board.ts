@@ -4,7 +4,7 @@
  */
 import { Agent } from "@cursor/sdk";
 
-import { getLocalAgentOptions } from "../lib/board-runner";
+import { getLocalAgentOptions } from "../lib/agent-client";
 
 async function main() {
   const options = getLocalAgentOptions();

@@ -1,7 +1,10 @@
 import type { AgentOptions } from "@cursor/sdk";
 
+import type { BoardEmitEvent, BoardRunResult } from "./board-events";
 import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
+import { runPromptForText, getLocalAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
+import { generateGlossary } from "./glossary-agent";
 import {
   chairBriefingPrompt,
   chairBriefingRetryPrompt,
@@ -9,52 +12,95 @@ import {
   chairMeetingPlanRetryPrompt,
   expertTurnPrompt,
 } from "./prompts";
-import type { ChairBriefing, MeetingPlan, Transcript, TranscriptTurn } from "./schemas";
+import type { ChairBriefing, Glossary, MeetingPlan, TranscriptTurn } from "./schemas";
 import { briefingSchema, meetingPlanSchema } from "./schemas";
 
-export type BoardRunResult = {
-  meetingPlan: MeetingPlan;
-  transcript: Transcript;
-  briefing: ChairBriefing;
-};
+export type { BoardRunResult } from "./board-events";
+export { getLocalAgentOptions } from "./agent-client";
 
-function getApiKey(): string {
-  const key = process.env.CURSOR_API_KEY;
-  if (!key?.trim()) {
-    throw new Error("CURSOR_API_KEY is not set");
+export async function runBoardSessionWithEvents(
+  userBrief: string,
+  sink: (event: BoardEmitEvent) => void | Promise<void>,
+): Promise<void> {
+  const options = getLocalAgentOptions();
+  const plan = await generateMeetingPlan(userBrief, options);
+  await sink({ type: "meeting_plan", payload: plan });
+
+  const turns: TranscriptTurn[] = [];
+  const otherNames = () => plan.roles.map((r) => ({ name: r.name }));
+
+  for (let i = 0; i < plan.turnSchedule.length; i++) {
+    const roleId = plan.turnSchedule[i]!;
+    const role = plan.roles.find((r) => r.id === roleId);
+    if (!role) {
+      throw new Error(`Internal error: missing role ${roleId}`);
+    }
+    const prompt = expertTurnPrompt({
+      expertName: role.name,
+      mandate: role.mandate,
+      otherExperts: otherNames().filter((o) => o.name !== role.name),
+      transcriptLines: formatTranscriptForPrompt(turns),
+      chairNotes: plan.chairNotesForFacilitator,
+    });
+    const { text, runId } = await runPromptForText(prompt, options);
+    console.info(
+      "[board] expert turn",
+      i + 1,
+      "/",
+      plan.turnSchedule.length,
+      runId,
+      role.id,
+    );
+    const turn: TranscriptTurn = {
+      id: turns.length + 1,
+      roleId: role.id,
+      roleName: role.name,
+      content: text,
+    };
+    turns.push(turn);
+    await sink({ type: "turn", payload: turn });
   }
-  return key.trim();
+
+  const briefing = await generateBriefing(userBrief, plan, turns, options);
+  await sink({ type: "briefing", payload: briefing });
+
+  const glossary = await generateGlossary(userBrief, plan, turns, briefing, options);
+  await sink({ type: "glossary", payload: glossary });
 }
 
-export function getLocalAgentOptions(): AgentOptions {
+export async function runBoardSession(userBrief: string): Promise<BoardRunResult> {
+  const turns: TranscriptTurn[] = [];
+  let meetingPlan: MeetingPlan | undefined;
+  let briefing: ChairBriefing | undefined;
+  let glossary: Glossary | undefined;
+
+  await runBoardSessionWithEvents(userBrief, async (e) => {
+    switch (e.type) {
+      case "meeting_plan":
+        meetingPlan = e.payload;
+        break;
+      case "turn":
+        turns.push(e.payload);
+        break;
+      case "briefing":
+        briefing = e.payload;
+        break;
+      case "glossary":
+        glossary = e.payload;
+        break;
+    }
+  });
+
+  if (!meetingPlan || !briefing || glossary === undefined) {
+    throw new Error("Incomplete board session aggregation");
+  }
+
   return {
-    apiKey: getApiKey(),
-    model: { id: "composer-2" },
-    local: { cwd: process.cwd(), settingSources: [] },
+    meetingPlan,
+    transcript: { turns },
+    briefing,
+    glossary,
   };
-}
-
-async function runPromptForText(
-  prompt: string,
-  options: AgentOptions,
-): Promise<{ text: string; runId: string }> {
-  const { Agent, CursorAgentError } = await import("@cursor/sdk");
-  try {
-    const result = await Agent.prompt(prompt, options);
-    if (result.status === "error") {
-      throw new Error(`Agent run finished with error status (run ${result.id})`);
-    }
-    const text = result.result?.trim();
-    if (!text) {
-      throw new Error(`Agent returned empty result (run ${result.id})`);
-    }
-    return { text, runId: result.id };
-  } catch (e) {
-    if (e instanceof CursorAgentError) {
-      throw new Error(`Cursor agent failed to start: ${e.message}`);
-    }
-    throw e;
-  }
 }
 
 function parseMeetingPlanJson(raw: string): MeetingPlan {
@@ -157,47 +203,4 @@ async function generateBriefing(
     }
   }
   throw new Error("Unreachable");
-}
-
-export async function runBoardSession(userBrief: string): Promise<BoardRunResult> {
-  const options = getLocalAgentOptions();
-  const plan = await generateMeetingPlan(userBrief, options);
-
-  const turns: TranscriptTurn[] = [];
-  const otherNames = () => plan.roles.map((r) => ({ name: r.name }));
-
-  for (let i = 0; i < plan.turnSchedule.length; i++) {
-    const roleId = plan.turnSchedule[i]!;
-    const role = plan.roles.find((r) => r.id === roleId);
-    if (!role) {
-      throw new Error(`Internal error: missing role ${roleId}`);
-    }
-    const prompt = expertTurnPrompt({
-      expertName: role.name,
-      mandate: role.mandate,
-      otherExperts: otherNames().filter((o) => o.name !== role.name),
-      transcriptLines: formatTranscriptForPrompt(turns),
-      chairNotes: plan.chairNotesForFacilitator,
-    });
-    const { text, runId } = await runPromptForText(prompt, options);
-    console.info(
-      "[board] expert turn",
-      i + 1,
-      "/",
-      plan.turnSchedule.length,
-      runId,
-      role.id,
-    );
-    turns.push({
-      id: turns.length + 1,
-      roleId: role.id,
-      roleName: role.name,
-      content: text,
-    });
-  }
-
-  const transcript: Transcript = { turns };
-  const briefing = await generateBriefing(userBrief, plan, turns, options);
-
-  return { meetingPlan: plan, transcript, briefing };
 }

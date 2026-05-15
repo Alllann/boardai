@@ -53,3 +53,18 @@ export const transcriptSchema = z.object({
 
 export type Transcript = z.infer<typeof transcriptSchema>;
 export type TranscriptTurn = z.infer<typeof transcriptTurnSchema>;
+
+const glossaryEntrySchema = z.object({
+  /** Display / canonical label */
+  phrase: z.string().min(1).max(120),
+  /** Substring to find in source text (may equal phrase) */
+  match: z.string().min(1).max(120),
+  explanation: z.string().min(1).max(450),
+});
+
+export const glossarySchema = z.object({
+  entries: z.array(glossaryEntrySchema).max(25),
+});
+
+export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
+export type Glossary = z.infer<typeof glossarySchema>;

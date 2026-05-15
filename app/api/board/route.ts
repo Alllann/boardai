@@ -39,7 +39,12 @@ export async function POST(req: Request) {
 
   try {
     const result = await runBoardSession(brief);
-    return NextResponse.json(result);
+    return NextResponse.json({
+      meetingPlan: result.meetingPlan,
+      transcript: result.transcript,
+      briefing: result.briefing,
+      glossary: result.glossary,
+    });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     if (message.includes("CURSOR_API_KEY")) {
