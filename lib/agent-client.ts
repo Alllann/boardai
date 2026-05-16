@@ -8,6 +8,41 @@ function getApiKey(): string {
   return key.trim();
 }
 
+/** Local agents need a writable home dir and a local Cursor runtime — unavailable on Vercel. */
+function resolveAgentRuntime(): "local" | "cloud" {
+  const override = process.env.CURSOR_AGENT_RUNTIME?.trim().toLowerCase();
+  if (override === "cloud" || override === "local") {
+    return override;
+  }
+  if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return "cloud";
+  }
+  return "local";
+}
+
+export function getAgentOptions(): AgentOptions {
+  const base = {
+    apiKey: getApiKey(),
+    model: { id: "composer-2" as const },
+  };
+
+  if (resolveAgentRuntime() === "cloud") {
+    return {
+      ...base,
+      cloud: {
+        env: { type: "cloud" },
+        skipReviewerRequest: true,
+      },
+    };
+  }
+
+  return {
+    ...base,
+    local: { cwd: process.cwd(), settingSources: [] },
+  };
+}
+
+/** @deprecated Use getAgentOptions — kept for scripts that force local. */
 export function getLocalAgentOptions(): AgentOptions {
   return {
     apiKey: getApiKey(),

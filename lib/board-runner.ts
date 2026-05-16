@@ -2,7 +2,7 @@ import type { AgentOptions } from "@cursor/sdk";
 
 import type { BoardEmitEvent, BoardRunResult } from "./board-events";
 import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
-import { runPromptForText, getLocalAgentOptions } from "./agent-client";
+import { runPromptForText, getAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
 import { generateGlossary } from "./glossary-agent";
 import {
@@ -16,13 +16,13 @@ import type { ChairBriefing, Glossary, MeetingPlan, TranscriptTurn } from "./sch
 import { briefingSchema, meetingPlanSchema } from "./schemas";
 
 export type { BoardRunResult } from "./board-events";
-export { getLocalAgentOptions } from "./agent-client";
+export { getAgentOptions } from "./agent-client";
 
 export async function runBoardSessionWithEvents(
   userBrief: string,
   sink: (event: BoardEmitEvent) => void | Promise<void>,
 ): Promise<void> {
-  const options = getLocalAgentOptions();
+  const options = getAgentOptions();
   const plan = await generateMeetingPlan(userBrief, options);
   await sink({ type: "meeting_plan", payload: plan });
 
