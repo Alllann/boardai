@@ -61,7 +61,7 @@ export function DiscussionTurn({
       <div
         className={`max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${palette.border} ${palette.bg}`}
       >
-        <RoleBadge role={fallbackRole} />
+        <RoleBadge role={fallbackRole} compact />
         <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           <GlossaryText text={turn.content} entries={glossaryEntries} />
         </div>

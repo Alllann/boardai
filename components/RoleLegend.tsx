@@ -12,16 +12,12 @@ export function RoleLegend({ roles }: Props) {
     <div className="flex flex-wrap gap-2">
       {roles.map((r) => {
         const palette = getRolePalette(r.id);
-        const mandateShort =
-          r.mandate.length > 72 ? `${r.mandate.slice(0, 69)}…` : r.mandate;
         return (
           <div
             key={r.id}
-            title={r.mandate}
-            className={`max-w-xs rounded-lg border px-2.5 py-1.5 text-xs ${palette.border} ${palette.chip}`}
+            className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${palette.border} ${palette.chip}`}
           >
-            <span className="font-medium">{r.title}</span>
-            <span className="text-inherit/80"> — {mandateShort}</span>
+            {r.title}
           </div>
         );
       })}
