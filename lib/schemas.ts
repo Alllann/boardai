@@ -1,11 +1,20 @@
 import { z } from "zod";
 
 import {
+  GLOSSARY_MAX_ENTRIES,
+  MAX_READER_EXPLANATION_CHARS,
+  MAX_READER_THREAD_FRAMING_CHARS,
   MAX_ROLES,
   MAX_TURNS,
   MIN_ROLES,
   ROLE_ID_REGEX,
 } from "./board-constants";
+
+function clampText(max: number, value: string): string {
+  if (value.length <= max) return value;
+  const cut = value.slice(0, max - 1).trimEnd();
+  return cut.length > 0 ? `${cut}…` : value.slice(0, max);
+}
 
 const roleSchema = z.object({
   id: z.string().regex(ROLE_ID_REGEX, "role id must be lowercase_snake_case"),
@@ -63,8 +72,30 @@ const glossaryEntrySchema = z.object({
 });
 
 export const glossarySchema = z.object({
-  entries: z.array(glossaryEntrySchema).max(25),
+  entries: z
+    .array(glossaryEntrySchema)
+    .transform((entries) => entries.slice(0, GLOSSARY_MAX_ENTRIES)),
 });
 
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type Glossary = z.infer<typeof glossarySchema>;
+
+const turnExplanationSchema = z.object({
+  turnId: z.number().int().positive(),
+  explanation: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_READER_EXPLANATION_CHARS, s)),
+});
+
+export const readerGuideSchema = z.object({
+  turnExplanations: z.array(turnExplanationSchema),
+  threadFraming: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_READER_THREAD_FRAMING_CHARS, s))
+    .optional(),
+});
+
+export type TurnExplanation = z.infer<typeof turnExplanationSchema>;
+export type ReaderGuide = z.infer<typeof readerGuideSchema>;

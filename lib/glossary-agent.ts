@@ -21,7 +21,18 @@ export async function generateGlossary(
     );
     console.info("[board] glossary run", runId);
     const jsonStr = extractJsonObject(text);
-    return glossarySchema.parse(JSON.parse(jsonStr));
+    const raw = JSON.parse(jsonStr) as { entries?: unknown[] };
+    const glossary = glossarySchema.parse(raw);
+    const rawCount = Array.isArray(raw.entries) ? raw.entries.length : 0;
+    if (rawCount > glossary.entries.length) {
+      console.info(
+        "[board] glossary truncated",
+        rawCount,
+        "->",
+        glossary.entries.length,
+      );
+    }
+    return glossary;
   } catch (e) {
     console.warn("[board] glossary parse failed", e);
     return { entries: [] };

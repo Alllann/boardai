@@ -1,0 +1,17 @@
+---
+description: Use pnpm for all package and script commands in this repo
+alwaysApply: true
+---
+
+# Package manager: pnpm only
+
+When installing dependencies, running scripts, or changing packages in this project, use **pnpm** — not npm, yarn, or bun.
+
+| Task | Command |
+|------|---------|
+| Install | `pnpm install` |
+| Dev / build / lint | `pnpm dev`, `pnpm build`, `pnpm lint`, etc. |
+| Add dependency | `pnpm add <name>` or `pnpm add -D <name>` |
+| Remove | `pnpm remove <name>` |
+
+The canonical lockfile is `pnpm-lock.yaml`. Do not run `npm install`, `yarn`, or edit `package-lock.json`.

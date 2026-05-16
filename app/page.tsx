@@ -1,10 +1,20 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { DiscussionTurn } from "@/components/DiscussionTurn";
+import { GlossaryPanel } from "@/components/GlossaryPanel";
 import { GlossaryText } from "@/components/GlossaryText";
+import { RoleLegend } from "@/components/RoleLegend";
+import { getRolePalette } from "@/lib/role-colors";
 import type { BoardStreamEvent } from "@/lib/board-events";
-import type { ChairBriefing, Glossary, MeetingPlan, TranscriptTurn } from "@/lib/schemas";
+import type {
+  ChairBriefing,
+  Glossary,
+  MeetingPlan,
+  ReaderGuide,
+  TranscriptTurn,
+} from "@/lib/schemas";
 
 export default function Home() {
   const [brief, setBrief] = useState("");
@@ -14,21 +24,43 @@ export default function Home() {
   const [meetingPlan, setMeetingPlan] = useState<MeetingPlan | null>(null);
   const [turns, setTurns] = useState<TranscriptTurn[]>([]);
   const [briefing, setBriefing] = useState<ChairBriefing | null>(null);
+  const [readerGuide, setReaderGuide] = useState<ReaderGuide | null>(null);
   const [glossary, setGlossary] = useState<Glossary | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
 
+  const roleById = useMemo(() => {
+    const map = new Map<string, MeetingPlan["roles"][number]>();
+    if (meetingPlan) {
+      for (const r of meetingPlan.roles) {
+        map.set(r.id, r);
+      }
+    }
+    return map;
+  }, [meetingPlan]);
+
+  const explanationByTurnId = useMemo(() => {
+    const map = new Map<number, string>();
+    if (readerGuide) {
+      for (const e of readerGuide.turnExplanations) {
+        map.set(e.turnId, e.explanation);
+      }
+    }
+    return map;
+  }, [readerGuide]);
+
   useEffect(() => {
     if (!chatEndRef.current || !chatScrollRef.current) return;
     chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [turns.length, meetingPlan, briefing]);
+  }, [turns.length, meetingPlan, briefing, readerGuide]);
 
   const runBoard = useCallback(async () => {
     setError(null);
     setMeetingPlan(null);
     setTurns([]);
     setBriefing(null);
+    setReaderGuide(null);
     setGlossary(null);
     setLoading(true);
 
@@ -68,6 +100,9 @@ export default function Home() {
             break;
           case "briefing":
             setBriefing(ev.payload);
+            break;
+          case "reader_guide":
+            setReaderGuide(ev.payload);
             break;
           case "glossary":
             setGlossary(ev.payload);
@@ -130,6 +165,8 @@ export default function Home() {
 
   const glossaryEntries = glossary?.entries ?? [];
   const hasBoard = meetingPlan !== null || turns.length > 0 || briefing !== null;
+  const discussionInProgress =
+    loading && meetingPlan !== null && turns.length > 0 && readerGuide === null;
 
   return (
     <div className="mx-auto flex min-h-full max-w-5xl flex-col gap-8 px-4 py-10 sm:px-6">
@@ -138,9 +175,10 @@ export default function Home() {
           Board AI
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Describe your business idea or decision. The Chair convenes experts, you
-          see each message as it arrives, then a briefing. Hover underlined terms
-          for plain-language glosses (same wording — glosses are added separately).
+          Describe your business idea or decision. The Chair convenes experts; each
+          message shows who is speaking and their mandate. Expert dialogue is unchanged
+          — plain-language explanations and glossary terms are added separately after
+          the discussion. Hover underlined words for quick definitions.
         </p>
       </header>
 
@@ -173,7 +211,22 @@ export default function Home() {
                   ? `Discussion: ${turns.length} message${turns.length === 1 ? "" : "s"}…`
                   : "Experts joining…"
                 : "Chair is convening the board…"}
-              {briefing && !glossary ? " Adding glossary…" : ""}
+              {meetingPlan && turns.length > 0 && !readerGuide && !briefing
+                ? " (explanations after discussion)"
+                : ""}
+              {meetingPlan &&
+              turns.length >= meetingPlan.turnSchedule.length &&
+              !readerGuide &&
+              !briefing
+                ? " Writing briefing and explanations…"
+                : ""}
+              {meetingPlan &&
+              turns.length >= meetingPlan.turnSchedule.length &&
+              briefing &&
+              !readerGuide
+                ? " Finishing explanations…"
+                : ""}
+              {readerGuide && !glossary ? " Adding glossary…" : ""}
             </span>
           ) : null}
         </div>
@@ -204,21 +257,26 @@ export default function Home() {
                 Goal: {meetingPlan.meetingGoal}
               </p>
               <ul className="grid gap-3 sm:grid-cols-2">
-                {meetingPlan.roles.map((r) => (
-                  <li
-                    key={r.id}
-                    className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 text-sm dark:border-zinc-800 dark:bg-zinc-900/50"
-                  >
-                    <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                      {r.name}
-                    </div>
-                    <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                      id:{" "}
-                      <code className="rounded bg-zinc-200 px-1 dark:bg-zinc-800">{r.id}</code>
-                    </div>
-                    <p className="mt-2 text-zinc-700 dark:text-zinc-300">{r.mandate}</p>
-                  </li>
-                ))}
+                {meetingPlan.roles.map((r) => {
+                  const palette = getRolePalette(r.id);
+                  return (
+                    <li
+                      key={r.id}
+                      className={`rounded-lg border p-3 text-sm ${palette.border} ${palette.bg}`}
+                    >
+                      <div className="font-medium text-zinc-900 dark:text-zinc-100">
+                        {r.name}
+                      </div>
+                      <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        id:{" "}
+                        <code className="rounded bg-zinc-200/80 px-1 dark:bg-zinc-800">
+                          {r.id}
+                        </code>
+                      </div>
+                      <p className="mt-2 text-zinc-700 dark:text-zinc-300">{r.mandate}</p>
+                    </li>
+                  );
+                })}
               </ul>
             </section>
           ) : null}
@@ -243,35 +301,53 @@ export default function Home() {
               </button>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Transcript is model-generated dialogue for advisory purposes. Underlined
-              segments may show a glossary tooltip (hover or keyboard focus).
+              Model-generated advisory dialogue. Each bubble shows the expert&apos;s role
+              and mandate. Underlined segments have glossary tooltips when available.
             </p>
+            {discussionInProgress ? (
+              <p className="text-xs text-zinc-500 italic dark:text-zinc-400">
+                Plain-language explanations will appear when the discussion finishes.
+              </p>
+            ) : null}
+
+            {meetingPlan && meetingPlan.roles.length > 0 ? (
+              <RoleLegend roles={meetingPlan.roles} />
+            ) : null}
+
             <div
               ref={chatScrollRef}
               className="max-h-[min(28rem,50vh)] min-h-[12rem] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
             >
+              {readerGuide?.threadFraming ? (
+                <div className="rounded-lg border border-zinc-200 bg-white/90 px-3 py-2 text-xs leading-relaxed text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950/80 dark:text-zinc-300">
+                  <span className="font-semibold text-zinc-600 dark:text-zinc-400">
+                    What this meeting is about:{" "}
+                  </span>
+                  {readerGuide.threadFraming}
+                </div>
+              ) : null}
+
               {turns.length === 0 && !loading ? (
                 <p className="text-sm text-zinc-500">No messages yet.</p>
               ) : null}
               <ul className="space-y-3">
                 {turns.map((t) => (
-                  <li
+                  <DiscussionTurn
                     key={t.id}
-                    className="ml-0 flex justify-start sm:ml-4"
-                  >
-                    <div className="max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border border-zinc-200 bg-white px-4 py-3 shadow-sm dark:border-zinc-700 dark:bg-zinc-950">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                        {t.roleName}
-                      </div>
-                      <div className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-                        <GlossaryText text={t.content} entries={glossaryEntries} />
-                      </div>
-                    </div>
-                  </li>
+                    turn={t}
+                    role={roleById.get(t.roleId)}
+                    glossaryEntries={glossaryEntries}
+                    explanation={explanationByTurnId.get(t.id)}
+                    showExplanationToggle={Boolean(readerGuide)}
+                  />
                 ))}
               </ul>
               <div ref={chatEndRef} />
             </div>
+
+            {glossaryEntries.length > 0 ? (
+              <GlossaryPanel entries={glossaryEntries} />
+            ) : null}
           </section>
 
           {briefing ? (

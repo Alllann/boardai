@@ -5,6 +5,7 @@ import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
 import { runPromptForText, getAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
 import { generateGlossary } from "./glossary-agent";
+import { generateReaderGuide } from "./reader-agent";
 import {
   chairBriefingPrompt,
   chairBriefingRetryPrompt,
@@ -12,7 +13,13 @@ import {
   chairMeetingPlanRetryPrompt,
   expertTurnPrompt,
 } from "./prompts";
-import type { ChairBriefing, Glossary, MeetingPlan, TranscriptTurn } from "./schemas";
+import type {
+  ChairBriefing,
+  Glossary,
+  MeetingPlan,
+  ReaderGuide,
+  TranscriptTurn,
+} from "./schemas";
 import { briefingSchema, meetingPlanSchema } from "./schemas";
 
 export type { BoardRunResult } from "./board-events";
@@ -61,8 +68,12 @@ export async function runBoardSessionWithEvents(
     await sink({ type: "turn", payload: turn });
   }
 
-  const briefing = await generateBriefing(userBrief, plan, turns, options);
+  const [briefing, readerGuide] = await Promise.all([
+    generateBriefing(userBrief, plan, turns, options),
+    generateReaderGuide(userBrief, plan, turns, options),
+  ]);
   await sink({ type: "briefing", payload: briefing });
+  await sink({ type: "reader_guide", payload: readerGuide });
 
   const glossary = await generateGlossary(userBrief, plan, turns, briefing, options);
   await sink({ type: "glossary", payload: glossary });
@@ -72,6 +83,7 @@ export async function runBoardSession(userBrief: string): Promise<BoardRunResult
   const turns: TranscriptTurn[] = [];
   let meetingPlan: MeetingPlan | undefined;
   let briefing: ChairBriefing | undefined;
+  let readerGuide: ReaderGuide | undefined;
   let glossary: Glossary | undefined;
 
   await runBoardSessionWithEvents(userBrief, async (e) => {
@@ -85,13 +97,16 @@ export async function runBoardSession(userBrief: string): Promise<BoardRunResult
       case "briefing":
         briefing = e.payload;
         break;
+      case "reader_guide":
+        readerGuide = e.payload;
+        break;
       case "glossary":
         glossary = e.payload;
         break;
     }
   });
 
-  if (!meetingPlan || !briefing || glossary === undefined) {
+  if (!meetingPlan || !briefing || !readerGuide || glossary === undefined) {
     throw new Error("Incomplete board session aggregation");
   }
 
@@ -99,6 +114,7 @@ export async function runBoardSession(userBrief: string): Promise<BoardRunResult
     meetingPlan,
     transcript: { turns },
     briefing,
+    readerGuide,
     glossary,
   };
 }

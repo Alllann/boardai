@@ -1,3 +1,4 @@
+import { GLOSSARY_MAX_ENTRIES } from "./board-constants";
 import type { ChairBriefing, MeetingPlan, TranscriptTurn } from "./schemas";
 
 export function buildGlossaryBundle(
@@ -43,7 +44,7 @@ ${bundle}
 
 Rules:
 - Output ONLY valid JSON, no markdown fences.
-- Return at most 25 entries. Prefer high-signal phrases that actually appear verbatim (or clear acronym expansions tied to text) in the transcript or briefing.
+- Return at most ${GLOSSARY_MAX_ENTRIES} entries. Prefer high-signal phrases that actually appear verbatim (or clear acronym expansions tied to text) in the transcript or briefing.
 - Each entry: "phrase" (short label), "match" (exact substring to locate in the original text for highlighting — must match character-for-character including case/spaces as it appears in the TRANSCRIPT or BRIEFING sections above), "explanation" (one clear sentence, plain language).
 - "match" must be a contiguous substring from the provided material so a UI can search for it.
 - Do NOT simplify or replace the experts' dialogue; do NOT add commentary outside the JSON.
