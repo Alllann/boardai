@@ -13,7 +13,7 @@ export function buildReaderBundle(
     .map((t) => `[turnId=${t.id}] ${t.roleName}: ${t.content}`)
     .join("\n\n");
 
-  const planBlock = `Meeting goal: ${plan.meetingGoal}\nRoles:\n${plan.roles.map((r) => `- ${r.name} (id=${r.id}): ${r.mandate}`).join("\n")}`;
+  const planBlock = `Meeting goal: ${plan.meetingGoal}\nRoles:\n${plan.roles.map((r) => `- ${r.title} (id=${r.id}): ${r.mandate}`).join("\n")}`;
 
   return `USER BRIEF (calibrate explanation depth — do not quote back verbatim):\n${userBrief}\n\n---\nMEETING PLAN:\n${planBlock}\n\n---\nTRANSCRIPT (read-only; do NOT rewrite or replace expert wording):\n${transcriptBlock}`;
 }

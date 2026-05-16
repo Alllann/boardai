@@ -176,7 +176,7 @@ export default function Home() {
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           Describe your business idea or decision. The Chair convenes experts; each
-          message shows who is speaking and their mandate. Expert dialogue is unchanged
+          message shows the expert&apos;s title and mandate. Expert dialogue is unchanged
           — plain-language explanations and glossary terms are added separately after
           the discussion. Hover underlined words for quick definitions.
         </p>
@@ -265,7 +265,7 @@ export default function Home() {
                       className={`rounded-lg border p-3 text-sm ${palette.border} ${palette.bg}`}
                     >
                       <div className="font-medium text-zinc-900 dark:text-zinc-100">
-                        {r.name}
+                        {r.title}
                       </div>
                       <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
                         id:{" "}
@@ -301,7 +301,7 @@ export default function Home() {
               </button>
             </div>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Model-generated advisory dialogue. Each bubble shows the expert&apos;s role
+              Model-generated advisory dialogue. Each bubble shows the expert&apos;s title
               and mandate. Underlined segments have glossary tooltips when available.
             </p>
             {discussionInProgress ? (

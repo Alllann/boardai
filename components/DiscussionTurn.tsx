@@ -27,7 +27,7 @@ export function DiscussionTurn({
   const palette = getRolePalette(turn.roleId);
   const fallbackRole = role ?? {
     id: turn.roleId,
-    name: turn.roleName,
+    title: turn.roleName,
     mandate: "Expert on this board.",
   };
 

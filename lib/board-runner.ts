@@ -34,7 +34,7 @@ export async function runBoardSessionWithEvents(
   await sink({ type: "meeting_plan", payload: plan });
 
   const turns: TranscriptTurn[] = [];
-  const otherNames = () => plan.roles.map((r) => ({ name: r.name }));
+  const otherTitles = () => plan.roles.map((r) => ({ title: r.title }));
 
   for (let i = 0; i < plan.turnSchedule.length; i++) {
     const roleId = plan.turnSchedule[i]!;
@@ -43,9 +43,9 @@ export async function runBoardSessionWithEvents(
       throw new Error(`Internal error: missing role ${roleId}`);
     }
     const prompt = expertTurnPrompt({
-      expertName: role.name,
+      expertTitle: role.title,
       mandate: role.mandate,
-      otherExperts: otherNames().filter((o) => o.name !== role.name),
+      otherExperts: otherTitles().filter((o) => o.title !== role.title),
       transcriptLines: formatTranscriptForPrompt(turns),
       chairNotes: plan.chairNotesForFacilitator,
     });
@@ -61,7 +61,7 @@ export async function runBoardSessionWithEvents(
     const turn: TranscriptTurn = {
       id: turns.length + 1,
       roleId: role.id,
-      roleName: role.name,
+      roleName: role.title,
       content: text,
     };
     turns.push(turn);

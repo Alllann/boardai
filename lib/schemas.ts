@@ -16,11 +16,20 @@ function clampText(max: number, value: string): string {
   return cut.length > 0 ? `${cut}…` : value.slice(0, max);
 }
 
-const roleSchema = z.object({
-  id: z.string().regex(ROLE_ID_REGEX, "role id must be lowercase_snake_case"),
-  name: z.string().min(1).max(120),
-  mandate: z.string().min(1).max(800),
-});
+const roleSchema = z
+  .object({
+    id: z.string().regex(ROLE_ID_REGEX, "role id must be lowercase_snake_case"),
+    /** Board seat / job title shown in UI and dialogue (e.g. "General Counsel"). */
+    title: z.string().min(1).max(120).optional(),
+    /** @deprecated Chair may still emit `name`; normalized to `title`. */
+    name: z.string().min(1).max(120).optional(),
+    mandate: z.string().min(1).max(800),
+  })
+  .transform((r) => ({
+    id: r.id,
+    title: (r.title ?? r.name ?? "Board expert").trim(),
+    mandate: r.mandate,
+  }));
 
 export const meetingPlanSchema = z
   .object({

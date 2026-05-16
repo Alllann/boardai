@@ -20,7 +20,7 @@ export function RoleLegend({ roles }: Props) {
             title={r.mandate}
             className={`max-w-xs rounded-lg border px-2.5 py-1.5 text-xs ${palette.border} ${palette.chip}`}
           >
-            <span className="font-medium">{r.name}</span>
+            <span className="font-medium">{r.title}</span>
             <span className="text-inherit/80"> — {mandateShort}</span>
           </div>
         );

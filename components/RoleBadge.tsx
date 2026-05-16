@@ -25,7 +25,7 @@ export function RoleBadge({ role, compact = false }: Props) {
           aria-hidden
         />
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-          {role.name}
+          {role.title}
         </span>
       </div>
       {!compact ? (
@@ -34,6 +34,7 @@ export function RoleBadge({ role, compact = false }: Props) {
             expanded ? "" : "line-clamp-2"
           }`}
         >
+          <span className="font-medium text-zinc-500 dark:text-zinc-500">Mandate: </span>
           {role.mandate}
         </p>
       ) : null}

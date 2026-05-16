@@ -24,7 +24,7 @@ export function buildGlossaryBundle(
     .filter(Boolean)
     .join("\n");
 
-  const planBlock = `Meeting goal: ${plan.meetingGoal}\nRoles: ${plan.roles.map((r) => `${r.name} (${r.mandate})`).join("\n")}`;
+  const planBlock = `Meeting goal: ${plan.meetingGoal}\nRoles: ${plan.roles.map((r) => `${r.title} (${r.mandate})`).join("\n")}`;
 
   return `USER BRIEF (for audience context only — do not rewrite the dialogue):\n${userBrief}\n\n---\nMEETING PLAN:\n${planBlock}\n\n---\nTRANSCRIPT:\n${transcriptBlock}\n\n---\nCHAIR BRIEFING (same session):\n${briefingBlock}`;
 }

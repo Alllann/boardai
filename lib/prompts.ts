@@ -16,15 +16,15 @@ ${userBrief}
 
 Rules:
 - Pick between ${MIN_ROLES} and ${MAX_ROLES} experts. Each expert has a unique machine id \`id\`: lowercase_snake_case (letters, digits, underscore), starting with a letter.
-- Names are human-readable titles (e.g. "Unit economics", "Regulatory").
-- Mandates must be NON-OVERLAPPING and tailored to THIS brief (stage, industry, constraints implied in the text).
+- \`title\` is the expert's board seat / expert title — how you would introduce them. Use a recognizable role name, NOT a topic label (avoid "Unit economics", "Regulatory AI" as titles).
+- \`mandate\` is their detailed, non-overlapping scope for THIS brief (what they must stress-test). Put functional/topic detail in mandate, not in title.
 - Create \`turnSchedule\`: an ordered array of length between ${TARGET_TURNS_MIN} and ${TARGET_TURNS_MAX} (inclusive) of \`roleId\` strings. Repeat ids where a real meeting would bring someone back (objections, follow-ups). Order should create cross-talk and tension—not a rigid "everyone speaks once" go-around.
 - Include \`meetingGoal\`: one sentence on what this session must decide or stress-test.
 - Optional \`chairNotesForFacilitator\`: short private notes (tone: push for at least one sustained disagreement before the last third of turns).
 
 Output ONLY valid JSON (no markdown, no commentary) matching this shape:
 {
-  "roles": [{ "id": "string", "name": "string", "mandate": "string" }],
+  "roles": [{ "id": "string", "title": "string", "mandate": "string" }],
   "turnSchedule": ["role_id", "..."],
   "meetingGoal": "string",
   "chairNotesForFacilitator": "optional string"
@@ -44,23 +44,23 @@ Return corrected JSON ONLY.`;
 }
 
 export function expertTurnPrompt(params: {
-  expertName: string;
+  expertTitle: string;
   mandate: string;
-  otherExperts: { name: string }[];
+  otherExperts: { title: string }[];
   transcriptLines: string;
   chairNotes?: string;
 }): string {
   const others =
     params.otherExperts.length > 0
-      ? params.otherExperts.map((e) => e.name).join(", ")
+      ? params.otherExperts.map((e) => e.title).join(", ")
       : "(none yet)";
   const notes = params.chairNotes
     ? `\nChair guidance for this meeting (internal): ${params.chairNotes}\n`
     : "";
-  return `You are ONLY the expert: "${params.expertName}".
+  return `You are ONLY the expert: "${params.expertTitle}".
 Your mandate: ${params.mandate}
 ${notes}
-Other participants in this board (reference them by NAME when relevant): ${others}
+Other participants in this board (reference them by TITLE when relevant): ${others}
 
 Discussion so far:
 ---
