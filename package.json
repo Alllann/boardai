@@ -29,6 +29,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
+      "@cursor/sdk-linux-x64",
       "@cursor/sdk-win32-x64",
       "esbuild",
       "sharp",

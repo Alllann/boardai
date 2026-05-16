@@ -1,4 +1,21 @@
+import os from "node:os";
+
 import type { AgentOptions } from "@cursor/sdk";
+
+function ensureWritableHomeForServerless(): void {
+  if (process.env.VERCEL !== "1" && !process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    return;
+  }
+  const tmp = os.tmpdir();
+  if (!process.env.HOME || process.env.HOME === "/var/task") {
+    process.env.HOME = tmp;
+  }
+  if (!process.env.TMPDIR) {
+    process.env.TMPDIR = tmp;
+  }
+}
+
+ensureWritableHomeForServerless();
 
 function getApiKey(): string {
   const key = process.env.CURSOR_API_KEY;
@@ -8,13 +25,10 @@ function getApiKey(): string {
   return key.trim();
 }
 
-/** Local agents need a writable home dir and a local Cursor runtime — unavailable on Vercel. */
+/** Local by default (including Vercel). Cloud only when CURSOR_AGENT_RUNTIME=cloud. */
 function resolveAgentRuntime(): "local" | "cloud" {
   const override = process.env.CURSOR_AGENT_RUNTIME?.trim().toLowerCase();
-  if (override === "cloud" || override === "local") {
-    return override;
-  }
-  if (process.env.VERCEL === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+  if (override === "cloud") {
     return "cloud";
   }
   return "local";
@@ -42,13 +56,9 @@ export function getAgentOptions(): AgentOptions {
   };
 }
 
-/** @deprecated Use getAgentOptions — kept for scripts that force local. */
+/** @deprecated Use getAgentOptions — kept for scripts. */
 export function getLocalAgentOptions(): AgentOptions {
-  return {
-    apiKey: getApiKey(),
-    model: { id: "composer-2" },
-    local: { cwd: process.cwd(), settingSources: [] },
-  };
+  return getAgentOptions();
 }
 
 export async function runPromptForText(
