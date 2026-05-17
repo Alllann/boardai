@@ -12,6 +12,8 @@ import {
 import { createPortal } from "react-dom";
 
 import { AnnotatedText } from "@/components/AnnotatedText";
+import { useFloatingViewportPosition } from "@/hooks/use-floating-viewport-position";
+import { clampFloatingToViewport } from "@/lib/floating-viewport";
 import {
   EXPLAIN_MAX_SELECTION_CHARS,
   EXPLAIN_MIN_SELECTION_CHARS,
@@ -347,17 +349,63 @@ export function SelectableExplain({
   );
 
   const anchor = toolbar ?? popoverAnchor;
+  const showToolbar = Boolean(toolbar && !popover);
+  const showPopover = Boolean(popover);
+
+  const popoverContentKey =
+    popover?.status === "ready"
+      ? `ready-${popover.explanation.length}`
+      : popover?.status === "error"
+        ? `error-${popover.message.length}`
+        : (popover?.status ?? "");
+
+  const toolbarPos = useFloatingViewportPosition(
+    anchor,
+    "above",
+    toolbarRef,
+    showToolbar,
+  );
+  const popoverPos = useFloatingViewportPosition(
+    anchor,
+    "below",
+    popoverRef,
+    showPopover,
+    popoverContentKey,
+  );
+
+  const toolbarFallback =
+    anchor && !toolbarPos
+      ? clampFloatingToViewport(anchor, { width: 72, height: 36 }, "above")
+      : null;
+  const popoverFallback =
+    anchor && !popoverPos
+      ? clampFloatingToViewport(
+          anchor,
+          {
+            width: Math.min(
+              352,
+              typeof window !== "undefined" ? window.innerWidth - 24 : 352,
+            ),
+            height: 160,
+          },
+          "below",
+          12,
+        )
+      : null;
 
   const overlay =
     mounted && (toolbar || popover) && anchor ? (
       <>
-        {toolbar && !popover ? (
+        {showToolbar ? (
           <div
             ref={toolbarRef}
             role="toolbar"
             aria-label="Selection actions"
-            className="fixed z-50 -translate-x-1/2 -translate-y-full"
-            style={{ left: anchor.x, top: anchor.y }}
+            className="fixed z-50"
+            style={{
+              left: toolbarPos?.left ?? toolbarFallback?.left ?? anchor.x,
+              top: toolbarPos?.top ?? toolbarFallback?.top ?? anchor.y,
+            }}
           >
             <button
               type="button"
@@ -370,14 +418,17 @@ export function SelectableExplain({
           </div>
         ) : null}
 
-        {popover ? (
+        {showPopover && popover ? (
           <div
             ref={popoverRef}
             id={popoverId}
             role="dialog"
             aria-label="Explanation"
-            className="fixed z-50 max-h-[min(24rem,70vh)] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-xl dark:border-zinc-600 dark:bg-zinc-900"
-            style={{ left: anchor.x, top: anchor.y + 12 }}
+            className="fixed z-50 max-h-[min(24rem,70vh)] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-xl dark:border-zinc-600 dark:bg-zinc-900"
+            style={{
+              left: popoverPos?.left ?? popoverFallback?.left ?? anchor.x,
+              top: popoverPos?.top ?? popoverFallback?.top ?? anchor.y + 12,
+            }}
           >
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Explaining
