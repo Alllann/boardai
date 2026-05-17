@@ -1,0 +1,141 @@
+[
+  {
+    "id": "jargon-transcript",
+    "description": "Transcript selection with multiple domain terms (SaaS metrics).",
+    "tags": ["jargon", "transcript"],
+    "request": {
+      "selection": "net revenue retention and cohort payback",
+      "surroundingParagraph": "CFO: Before we scale paid acquisition, we need net revenue retention and cohort payback to hold — otherwise CAC efficiency is a mirage.",
+      "source": "transcript",
+      "turnId": 4,
+      "userBrief": "I'm a first-time founder building a B2B workflow tool. I understand product but not finance jargon. Explain things like I'm learning on the job.",
+      "meetingGoal": "Decide whether to increase paid acquisition spend this quarter.",
+      "transcriptSnippet": "CEO: We're debating a 40% bump in paid spend.\n\nCFO: Before we scale paid acquisition, we need net revenue retention and cohort payback to hold — otherwise CAC efficiency is a mirage.\n\nHead of Growth: Our top-of-funnel tests are promising."
+    }
+  },
+  {
+    "id": "briefing-thesis",
+    "description": "Chair briefing thesis with strategic framing language.",
+    "tags": ["briefing", "jargon"],
+    "request": {
+      "selection": "land-and-expand motion with a product-led wedge",
+      "surroundingParagraph": "Thesis: Pursue a land-and-expand motion with a product-led wedge before layering enterprise sales.",
+      "source": "briefing",
+      "section": "thesis",
+      "userBrief": "Non-technical founder; need plain language on go-to-market strategy terms.",
+      "meetingGoal": "Choose a GTM motion for the next two quarters.",
+      "briefingSnippet": "Executive summary: The board favors disciplined growth over blitz scaling.\nThesis: Pursue a land-and-expand motion with a product-led wedge before layering enterprise sales.\nKey risks: Sales hiring ahead of PMF | Channel conflict with partners"
+    }
+  },
+  {
+    "id": "ambiguous-phrase",
+    "description": "Ambiguous phrase that could mean runway or product runway.",
+    "tags": ["ambiguous", "transcript"],
+    "request": {
+      "selection": "runway is tight",
+      "surroundingParagraph": "General Counsel: With the pending litigation, runway is tight — we should model scenarios before committing to the hire.",
+      "source": "transcript",
+      "turnId": 6,
+      "userBrief": "I'm new to board meetings and legal/finance shorthand. Keep explanations short.",
+      "meetingGoal": "Approve headcount and legal budget for Q3.",
+      "transcriptSnippet": "CEO: We want to add two senior engineers.\n\nGeneral Counsel: With the pending litigation, runway is tight — we should model scenarios before committing to the hire."
+    }
+  },
+  {
+    "id": "vague-common-word",
+    "description": "Very short selection that should trigger vague-selection handling.",
+    "tags": ["vague", "transcript"],
+    "request": {
+      "selection": "however",
+      "surroundingParagraph": "However, the pilot customers are not renewing at the rate we assumed in the model.",
+      "source": "transcript",
+      "turnId": 3,
+      "userBrief": "Beginner reader; flag when a selection alone isn't meaningful.",
+      "meetingGoal": "Understand why renewal assumptions changed.",
+      "transcriptSnippet": "VP Customer Success: However, the pilot customers are not renewing at the rate we assumed in the model."
+    }
+  },
+  {
+    "id": "expert-voice-trap",
+    "description": "First-person expert quote that may tempt the model to speak as the expert.",
+    "tags": ["rule_compliance", "transcript"],
+    "request": {
+      "selection": "I would not sign off on this cap table change without a 409A refresh",
+      "surroundingParagraph": "General Counsel: I would not sign off on this cap table change without a 409A refresh — the last valuation is 14 months old.",
+      "source": "transcript",
+      "turnId": 5,
+      "userBrief": "I don't know startup legal terms. Explain without speaking as the lawyer.",
+      "meetingGoal": "Review proposed option pool expansion.",
+      "transcriptSnippet": "CEO: We're proposing a 3% option pool increase.\n\nGeneral Counsel: I would not sign off on this cap table change without a 409A refresh — the last valuation is 14 months old."
+    }
+  },
+  {
+    "id": "long-selection",
+    "description": "Long selection near the 500-character cap.",
+    "tags": ["long_selection", "transcript"],
+    "request": {
+      "selection": "If we front-load enterprise features before the self-serve funnel converts, we risk building a sales-led product nobody can adopt bottoms-up — the board has seen this movie with companies that chased logos before activation metrics moved, and our weekly active teams in the pilot are still flat despite top-of-funnel growth.",
+      "surroundingParagraph": "Head of Product: If we front-load enterprise features before the self-serve funnel converts, we risk building a sales-led product nobody can adopt bottoms-up — the board has seen this movie with companies that chased logos before activation metrics moved, and our weekly active teams in the pilot are still flat despite top-of-funnel growth.",
+      "source": "transcript",
+      "turnId": 7,
+      "userBrief": "Product-minded founder; explain product strategy tradeoffs simply.",
+      "meetingGoal": "Prioritize enterprise vs PLG roadmap.",
+      "transcriptSnippet": "Head of Product: If we front-load enterprise features before the self-serve funnel converts, we risk building a sales-led product nobody can adopt bottoms-up — the board has seen this movie with companies that chased logos before activation metrics moved, and our weekly active teams in the pilot are still flat despite top-of-funnel growth."
+    }
+  },
+  {
+    "id": "briefing-key-risk",
+    "description": "Indexed briefing key risk line.",
+    "tags": ["briefing"],
+    "request": {
+      "selection": "concentration risk in top three accounts",
+      "surroundingParagraph": "Key risks: concentration risk in top three accounts represents 62% of ARR.",
+      "source": "briefing",
+      "section": "keyRisks",
+      "sectionIndex": 0,
+      "userBrief": "Explain revenue and customer risk terms for someone without a finance background.",
+      "meetingGoal": "Assess revenue durability before fundraising.",
+      "briefingSnippet": "Executive summary: Growth is strong but customer concentration is elevated.\nThesis: Diversify mid-market before chasing enterprise logos.\nKey risks: concentration risk in top three accounts represents 62% of ARR | Burn multiple worsened last quarter"
+    }
+  },
+  {
+    "id": "compliance-jargon",
+    "description": "Regulatory/compliance jargon in transcript.",
+    "tags": ["jargon", "transcript"],
+    "request": {
+      "selection": "SOC 2 Type II and data processing agreements",
+      "surroundingParagraph": "CISO: Enterprise deals stall without SOC 2 Type II and data processing agreements aligned to their infosec questionnaire.",
+      "source": "transcript",
+      "turnId": 8,
+      "userBrief": "I'm technical but new to enterprise security compliance sales cycles.",
+      "meetingGoal": "Decide security certification priority vs feature work.",
+      "transcriptSnippet": "CISO: Enterprise deals stall without SOC 2 Type II and data processing agreements aligned to their infosec questionnaire.\n\nCEO: How long would certification take?"
+    }
+  },
+  {
+    "id": "chair-briefing-summary",
+    "description": "Chair executive summary — should explain Chair's message, not impersonate Chair.",
+    "tags": ["briefing", "rule_compliance"],
+    "request": {
+      "selection": "defer the Series B conversation until unit economics stabilize",
+      "surroundingParagraph": "Executive summary: The Chair recommends we defer the Series B conversation until unit economics stabilize.",
+      "source": "briefing",
+      "section": "executiveSummary",
+      "userBrief": "First-time fundraiser; explain what the Chair is advising and why.",
+      "meetingGoal": "Align on fundraising timing.",
+      "briefingSnippet": "Executive summary: The Chair recommends we defer the Series B conversation until unit economics stabilize.\nThesis: Focus on retention and gross margin for two quarters.\nKey risks: Burn rate | Competitive pricing pressure"
+    }
+  },
+  {
+    "id": "minimal-context",
+    "description": "Minimal session context — tests disambiguation from selection and surrounding paragraph only.",
+    "tags": ["minimal_context", "transcript"],
+    "request": {
+      "selection": "magic number for hiring plan",
+      "surroundingParagraph": "The CFO asked whether the magic number for hiring plan still assumes 18-month cash.",
+      "source": "transcript",
+      "userBrief": "Explain briefly; I don't know finance planning vocabulary."
+    }
+  }
+]
+
