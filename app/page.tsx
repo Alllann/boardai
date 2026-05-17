@@ -63,7 +63,7 @@ export default function Home() {
     [readerGuide],
   );
 
-  const explainDisabled = loading || !brief.trim();
+  const explainDisabled = !brief.trim();
 
   const baseExplainContext = useMemo((): ExplainContextParams | undefined => {
     if (!brief.trim()) return undefined;
@@ -215,10 +215,9 @@ export default function Home() {
         </h1>
         <p className="max-w-2xl text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
           Describe your business idea or decision. The Chair convenes experts; each
-          message shows the expert&apos;s title. Expert dialogue is unchanged
-          — plain-language explanations and glossary terms are added separately after
-          the discussion. Hover underlined words for quick definitions, or select text
-          and press Explain for phrase-level help.
+          message shows the expert&apos;s title. Select any phrase during the live
+          discussion and press Explain for on-demand help. Glossary underlines and
+          inline plain-language summaries are added when the session finishes.
         </p>
       </header>
 
@@ -252,7 +251,7 @@ export default function Home() {
                   : "Experts joining…"
                 : "Chair is convening the board…"}
               {meetingPlan && turns.length > 0 && !readerGuide && !briefing
-                ? " (explanations after discussion)"
+                ? " (inline summaries after discussion)"
                 : ""}
               {meetingPlan &&
               turns.length >= meetingPlan.turnSchedule.length &&
@@ -360,15 +359,17 @@ export default function Home() {
               <>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
                   Model-generated advisory dialogue. Each bubble shows the expert&apos;s
-                  title. Underlined segments have glossary tooltips. Select any phrase and
-                  click Explain, or use Explain this on a message.
+                  title. Select any phrase and click Explain, or use Explain this on a
+                  message — available during the live session. Glossary underlines appear
+                  when the session finishes.
                 </p>
                 {glossaryEntries.length > 0 ? (
                   <GlossaryPanel entries={glossaryEntries} />
                 ) : null}
                 {discussionInProgress ? (
                   <p className="text-xs text-zinc-500 italic dark:text-zinc-400">
-                    Plain-language explanations will appear when the discussion finishes.
+                    Select text and use Explain anytime. Inline summaries and glossary
+                    terms appear when the session finishes.
                   </p>
                 ) : null}
 
