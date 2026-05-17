@@ -11,6 +11,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 
+import { AnnotatedText } from "@/components/AnnotatedText";
 import {
   EXPLAIN_MAX_SELECTION_CHARS,
   EXPLAIN_MIN_SELECTION_CHARS,
@@ -20,7 +21,15 @@ import {
   getCachedExplanation,
   setCachedExplanation,
 } from "@/lib/explain-cache";
-import type { BriefingSection, ExplainRequest } from "@/lib/schemas";
+import {
+  explainHighlightsKey,
+  getStoredExplainHighlights,
+  mergeExplainHighlight,
+  setStoredExplainHighlights,
+  type ExplainHighlight,
+} from "@/lib/explain-highlights";
+import { selectionOffsetsInRoot } from "@/lib/selection-offsets";
+import type { BriefingSection, ExplainRequest, GlossaryEntry } from "@/lib/schemas";
 
 export type ExplainContextParams = {
   source: "transcript" | "briefing";
@@ -44,12 +53,14 @@ type PopoverState =
   | { status: "error"; selection: string; message: string };
 
 type Props = {
-  children: ReactNode;
+  text: string;
+  glossaryEntries: GlossaryEntry[];
   context: ExplainContextParams;
   blockText?: string;
   showBlockExplain?: boolean;
   disabled?: boolean;
   className?: string;
+  children?: ReactNode;
 };
 
 function selectionMeetsMin(text: string): boolean {
@@ -66,6 +77,8 @@ function clampSelection(text: string): string {
 }
 
 export function SelectableExplain({
+  text,
+  glossaryEntries,
   children,
   context,
   blockText,
@@ -73,35 +86,72 @@ export function SelectableExplain({
   disabled = false,
   className,
 }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const selectableRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
   const [toolbar, setToolbar] = useState<ToolbarState | null>(null);
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
+  const [pendingOffsets, setPendingOffsets] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const [surrounding, setSurrounding] = useState("");
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [popoverAnchor, setPopoverAnchor] = useState<ToolbarState | null>(null);
+  const [highlights, setHighlights] = useState<ExplainHighlight[]>([]);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
     () => false,
   );
 
-  const dismiss = useCallback(() => {
+  const scopeKey = explainHighlightsKey({
+    source: context.source,
+    turnId: context.turnId,
+    section: context.section,
+    sectionIndex: context.sectionIndex,
+  });
+
+  useEffect(() => {
+    setHighlights(getStoredExplainHighlights(scopeKey));
+  }, [scopeKey]);
+
+  const addHighlight = useCallback(
+    (
+      offsets: { start: number; end: number },
+      selection: string,
+      explanation: string,
+    ) => {
+      setHighlights((prev) => {
+        const next = mergeExplainHighlight(prev, {
+          start: offsets.start,
+          end: offsets.end,
+          selection,
+          explanation,
+        });
+        setStoredExplainHighlights(scopeKey, next);
+        return next;
+      });
+    },
+    [scopeKey],
+  );
+
+  const dismissPopover = useCallback(() => {
     setToolbar(null);
     setPendingSelection(null);
+    setPendingOffsets(null);
     setPopover(null);
     setPopoverAnchor(null);
   }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") dismiss();
+      if (e.key === "Escape") dismissPopover();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [dismiss]);
+  }, [dismissPopover]);
 
   useEffect(() => {
     if (!toolbar && !popover) return;
@@ -111,12 +161,15 @@ export function SelectableExplain({
       if (!(target instanceof Node)) return;
       if (toolbarRef.current?.contains(target)) return;
       if (popoverRef.current?.contains(target)) return;
-      dismiss();
+      if (target instanceof Element && target.closest("[data-explain-highlight]")) {
+        return;
+      }
+      dismissPopover();
     };
 
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
-  }, [toolbar, popover, dismiss]);
+  }, [toolbar, popover, dismissPopover]);
 
   const buildRequest = useCallback(
     (selection: string, surroundingParagraph: string): ExplainRequest => ({
@@ -134,10 +187,35 @@ export function SelectableExplain({
     [context],
   );
 
+  const openPopoverAt = useCallback(
+    (anchor: ToolbarState, selection: string, explanation: string) => {
+      setToolbar(null);
+      setPendingSelection(null);
+      setPendingOffsets(null);
+      setPopoverAnchor(anchor);
+      setPopover({ status: "ready", selection, explanation });
+    },
+    [],
+  );
+
   const runExplain = useCallback(
-    async (selection: string, surroundingParagraph: string, anchor: ToolbarState) => {
+    async (
+      selection: string,
+      surroundingParagraph: string,
+      anchor: ToolbarState,
+      offsets: { start: number; end: number } | null,
+    ) => {
       const trimmed = clampSelection(selection);
       if (!selectionMeetsMin(trimmed)) return;
+
+      const resolvedOffsets =
+        offsets ??
+        (() => {
+          const idx = text.indexOf(trimmed);
+          return idx >= 0
+            ? { start: idx, end: idx + trimmed.length }
+            : null;
+        })();
 
       setToolbar(null);
       setPendingSelection(trimmed);
@@ -153,6 +231,7 @@ export function SelectableExplain({
       const cached = getCachedExplanation(cacheKey);
       if (cached) {
         setPopover({ status: "ready", selection: trimmed, explanation: cached });
+        if (resolvedOffsets) addHighlight(resolvedOffsets, trimmed, cached);
         return;
       }
 
@@ -187,6 +266,7 @@ export function SelectableExplain({
         }
         setCachedExplanation(cacheKey, explanation);
         setPopover({ status: "ready", selection: trimmed, explanation });
+        if (resolvedOffsets) addHighlight(resolvedOffsets, trimmed, explanation);
       } catch (e) {
         setPopover({
           status: "error",
@@ -195,17 +275,18 @@ export function SelectableExplain({
         });
       }
     },
-    [buildRequest, context],
+    [addHighlight, buildRequest, context, text],
   );
 
   const readSelection = useCallback(() => {
-    const root = containerRef.current;
+    const root = selectableRef.current;
     if (!root || disabled) return;
 
     const sel = window.getSelection();
     if (!sel || sel.isCollapsed || sel.rangeCount === 0) {
       setToolbar(null);
       setPendingSelection(null);
+      setPendingOffsets(null);
       return;
     }
 
@@ -221,12 +302,14 @@ export function SelectableExplain({
       return;
     }
 
+    const offsets = selectionOffsetsInRoot(root, range);
     const rect = range.getBoundingClientRect();
     const anchor = {
       x: rect.left + rect.width / 2,
       y: Math.max(8, rect.top - 8),
     };
     setPendingSelection(clampSelection(text));
+    setPendingOffsets(offsets);
     setSurrounding(root.textContent?.slice(0, 2000) ?? "");
     setPopover(null);
     setPopoverAnchor(null);
@@ -235,17 +318,33 @@ export function SelectableExplain({
 
   const handleExplainClick = () => {
     if (!pendingSelection || !toolbar) return;
-    void runExplain(pendingSelection, surrounding, toolbar);
+    void runExplain(pendingSelection, surrounding, toolbar, pendingOffsets);
   };
 
   const handleBlockExplain = () => {
-    if (!blockText?.trim() || disabled) return;
-    const rect = containerRef.current?.getBoundingClientRect();
+    const source = blockText?.trim() || text.trim();
+    if (!source || disabled) return;
+    const rect = selectableRef.current?.getBoundingClientRect();
     const anchor = rect
       ? { x: rect.left + rect.width / 2, y: rect.top + 8 }
       : { x: window.innerWidth / 2, y: 80 };
-    void runExplain(blockText, blockText, anchor);
+    void runExplain(source, source, anchor, { start: 0, end: text.length });
   };
+
+  const handleHighlightClick = useCallback(
+    (highlight: ExplainHighlight, element: HTMLElement) => {
+      const rect = element.getBoundingClientRect();
+      openPopoverAt(
+        {
+          x: rect.left + rect.width / 2,
+          y: Math.max(8, rect.top - 8),
+        },
+        highlight.selection,
+        highlight.explanation,
+      );
+    },
+    [openPopoverAt],
+  );
 
   const anchor = toolbar ?? popoverAnchor;
 
@@ -277,7 +376,7 @@ export function SelectableExplain({
             id={popoverId}
             role="dialog"
             aria-label="Explanation"
-            className="fixed z-50 w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-xl dark:border-zinc-600 dark:bg-zinc-900"
+            className="fixed z-50 max-h-[min(24rem,70vh)] w-[min(22rem,calc(100vw-2rem))] -translate-x-1/2 overflow-y-auto rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-xl dark:border-zinc-600 dark:bg-zinc-900"
             style={{ left: anchor.x, top: anchor.y + 12 }}
           >
             <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -285,10 +384,10 @@ export function SelectableExplain({
             </p>
             <p className="mb-2 line-clamp-2 text-xs italic text-zinc-600 dark:text-zinc-400">
               &ldquo;{popover.selection.slice(0, 120)}
-              {popover.selection.length > 120 ? "…" : ""}&rdquo;
+              {popover.selection.length > 120 ? "\u2026" : ""}&rdquo;
             </p>
             {popover.status === "loading" ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Loading…</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Loading?</p>
             ) : null}
             {popover.status === "ready" ? (
               <p className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
@@ -302,7 +401,7 @@ export function SelectableExplain({
             ) : null}
             <button
               type="button"
-              onClick={dismiss}
+              onClick={dismissPopover}
               className="mt-2 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
             >
               Dismiss
@@ -314,12 +413,7 @@ export function SelectableExplain({
 
   return (
     <>
-      <div
-        ref={containerRef}
-        className={className}
-        onMouseUp={readSelection}
-        onKeyUp={readSelection}
-      >
+      <div className={className}>
         {showBlockExplain && blockText ? (
           <div className="mb-1 flex justify-end">
             <button
@@ -332,6 +426,18 @@ export function SelectableExplain({
             </button>
           </div>
         ) : null}
+        <div
+          ref={selectableRef}
+          onMouseUp={readSelection}
+          onKeyUp={readSelection}
+        >
+          <AnnotatedText
+            text={text}
+            entries={glossaryEntries}
+            highlights={highlights}
+            onExplainHighlightClick={handleHighlightClick}
+          />
+        </div>
         {children}
       </div>
       {overlay ? createPortal(overlay, document.body) : null}

@@ -55,7 +55,7 @@ export function readerGuidePrompt(
   const briefingRules = includeBriefing
     ? `
 - For EVERY Chair briefing block in the material (each [section=…] line), add one entry in \`briefingExplanations\` with matching \`section\` and \`index\` when the block has index=N (omit index for executiveSummary, thesis, dissentOrUnresolved).
-- Briefing explanations: 2–4 sentences on what the Chair is telling the owner and why it follows from the debate. Do NOT rewrite the Chair's wording.`
+- Briefing explanations: thorough plain-language notes on what the Chair is telling the owner and why it follows from the debate. Do NOT rewrite the Chair's wording.`
     : "";
 
   const briefingJson = includeBriefing
@@ -76,10 +76,10 @@ ${bundle}
 
 Rules:
 - Output ONLY valid JSON, no markdown fences.
-- For EVERY transcript turn (each [turnId=N] block), add one entry in \`turnExplanations\` with matching \`turnId\` and an \`explanation\` of 2–4 sentences.
-- Write EXPLANATIONS, not summaries: clarify intent, stakes, how the point responds to prior speakers, and plain-language meaning of jargon. Do NOT compress into one short line.
+- For EVERY transcript turn (each [turnId=N] block), add one entry in \`turnExplanations\` with matching \`turnId\` and a thorough plain-language \`explanation\`.
+- Write EXPLANATIONS, not summaries: clarify intent, stakes, how the point responds to prior speakers, and plain-language meaning of jargon. Use as many sentences as needed; do not truncate for brevity.
 - Do NOT quote or paraphrase the experts' exact sentences; do NOT rewrite their dialogue; do NOT change their tone.
-- HARD LIMIT: each \`explanation\` must be ≤ ${MAX_READER_EXPLANATION_CHARS} characters (count before output). Prefer concise plain language over length.
+- Each \`explanation\` may be up to ${MAX_READER_EXPLANATION_CHARS} characters; prefer completeness over length limits.
 - Optional \`threadFraming\`: ≤ ${MAX_READER_THREAD_FRAMING_CHARS} characters on what the meeting is wrestling with (only if helpful).${briefingRules}
 
 JSON shape:

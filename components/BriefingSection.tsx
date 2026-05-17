@@ -1,6 +1,5 @@
 "use client";
 
-import { GlossaryText } from "@/components/GlossaryText";
 import { PlainLanguageBlock } from "@/components/PlainLanguageBlock";
 import {
   SelectableExplain,
@@ -44,12 +43,13 @@ export function BriefingSection({
 
   const body = (
     <SelectableExplain
+      text={text}
+      glossaryEntries={glossaryEntries}
       context={context}
       blockText={text}
       showBlockExplain
       disabled={explainDisabled}
     >
-      <GlossaryText text={text} entries={glossaryEntries} />
       {explanation ? (
         <PlainLanguageBlock
           explanation={explanation}

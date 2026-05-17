@@ -44,12 +44,6 @@ export function DiscussionTurn({
       }
     : undefined;
 
-  const dialogue = (
-    <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-      <GlossaryText text={turn.content} entries={glossaryEntries} />
-    </div>
-  );
-
   return (
     <li className="ml-0 flex justify-start sm:ml-4">
       <div
@@ -58,12 +52,14 @@ export function DiscussionTurn({
         <RoleBadge role={fallbackRole} compact />
         {context ? (
           <SelectableExplain
+            text={turn.content}
+            glossaryEntries={glossaryEntries}
             context={context}
             blockText={turn.content}
             showBlockExplain
             disabled={explainDisabled}
+            className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
           >
-            {dialogue}
             {explanation ? (
               <PlainLanguageBlock
                 explanation={explanation}
@@ -73,7 +69,9 @@ export function DiscussionTurn({
           </SelectableExplain>
         ) : (
           <>
-            {dialogue}
+            <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+              <GlossaryText text={turn.content} entries={glossaryEntries} />
+            </div>
             {explanation ? (
               <PlainLanguageBlock
                 explanation={explanation}
