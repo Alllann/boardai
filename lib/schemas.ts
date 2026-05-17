@@ -2,6 +2,9 @@ import { z } from "zod";
 
 import {
   GLOSSARY_MAX_ENTRIES,
+  MAX_BRIEF_CHARS,
+  MAX_EXECUTIVE_SUMMARY_CHARS,
+  MAX_ON_DEMAND_EXPLAIN_CHARS,
   MAX_READER_EXPLANATION_CHARS,
   MAX_READER_THREAD_FRAMING_CHARS,
   MAX_ROLES,
@@ -48,6 +51,10 @@ export const meetingPlanSchema = z
 export type MeetingPlan = z.infer<typeof meetingPlanSchema>;
 
 export const briefingSchema = z.object({
+  executiveSummary: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_EXECUTIVE_SUMMARY_CHARS, s)),
   thesis: z.string().min(1),
   keyRisks: z.array(z.string()).min(1),
   experiments: z.array(z.string()).min(1),
@@ -97,8 +104,35 @@ const turnExplanationSchema = z.object({
     .transform((s) => clampText(MAX_READER_EXPLANATION_CHARS, s)),
 });
 
+export type TurnExplanation = z.infer<typeof turnExplanationSchema>;
+
+export const briefingSectionSchema = z.enum([
+  "executiveSummary",
+  "thesis",
+  "keyRisks",
+  "experiments",
+  "sevenDayPlan",
+  "openQuestions",
+  "dissentOrUnresolved",
+]);
+
+export type BriefingSection = z.infer<typeof briefingSectionSchema>;
+
+const briefingExplanationSchema = z.object({
+  section: briefingSectionSchema,
+  /** Zero-based index for array sections (keyRisks, experiments, etc.). */
+  index: z.number().int().nonnegative().optional(),
+  explanation: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_READER_EXPLANATION_CHARS, s)),
+});
+
+export type BriefingExplanation = z.infer<typeof briefingExplanationSchema>;
+
 export const readerGuideSchema = z.object({
   turnExplanations: z.array(turnExplanationSchema),
+  briefingExplanations: z.array(briefingExplanationSchema).optional(),
   threadFraming: z
     .string()
     .min(1)
@@ -106,5 +140,32 @@ export const readerGuideSchema = z.object({
     .optional(),
 });
 
-export type TurnExplanation = z.infer<typeof turnExplanationSchema>;
 export type ReaderGuide = z.infer<typeof readerGuideSchema>;
+
+export const explainSourceSchema = z.enum(["transcript", "briefing"]);
+
+export const explainRequestSchema = z.object({
+  selection: z.string().min(1).max(500),
+  surroundingParagraph: z.string().max(2000).optional(),
+  source: explainSourceSchema,
+  turnId: z.number().int().positive().optional(),
+  section: briefingSectionSchema.optional(),
+  sectionIndex: z.number().int().nonnegative().optional(),
+  userBrief: z.string().min(1).max(MAX_BRIEF_CHARS),
+  meetingGoal: z.string().max(500).optional(),
+  /** Trimmed transcript context (recent turns). */
+  transcriptSnippet: z.string().max(4000).optional(),
+  /** Trimmed briefing context. */
+  briefingSnippet: z.string().max(2000).optional(),
+});
+
+export type ExplainRequest = z.infer<typeof explainRequestSchema>;
+
+export const explainResponseSchema = z.object({
+  explanation: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_ON_DEMAND_EXPLAIN_CHARS, s)),
+});
+
+export type ExplainResponse = z.infer<typeof explainResponseSchema>;

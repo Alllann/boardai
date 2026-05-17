@@ -1,13 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
-
 import { GlossaryText } from "@/components/GlossaryText";
+import { PlainLanguageBlock } from "@/components/PlainLanguageBlock";
 import { RoleBadge } from "@/components/RoleBadge";
+import {
+  SelectableExplain,
+  type ExplainContextParams,
+} from "@/components/SelectableExplain";
 import { getRolePalette } from "@/lib/role-colors";
 import type { GlossaryEntry, MeetingPlan, TranscriptTurn } from "@/lib/schemas";
-
-const EXPLANATIONS_EXPANDED_KEY = "boardai-explanations-expanded";
 
 type Props = {
   turn: TranscriptTurn;
@@ -15,6 +16,8 @@ type Props = {
   glossaryEntries: GlossaryEntry[];
   explanation?: string;
   showExplanationToggle: boolean;
+  explainContext?: ExplainContextParams;
+  explainDisabled?: boolean;
 };
 
 export function DiscussionTurn({
@@ -23,6 +26,8 @@ export function DiscussionTurn({
   glossaryEntries,
   explanation,
   showExplanationToggle,
+  explainContext,
+  explainDisabled = false,
 }: Props) {
   const palette = getRolePalette(turn.roleId);
   const fallbackRole = role ?? {
@@ -31,30 +36,19 @@ export function DiscussionTurn({
     mandate: "Expert on this board.",
   };
 
-  const [explanationsExpanded, setExplanationsExpanded] = useState(true);
-
-  useEffect(() => {
-    try {
-      const stored = sessionStorage.getItem(EXPLANATIONS_EXPANDED_KEY);
-      if (stored === "0") setExplanationsExpanded(false);
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  const toggleExplanations = () => {
-    setExplanationsExpanded((v) => {
-      const next = !v;
-      try {
-        sessionStorage.setItem(EXPLANATIONS_EXPANDED_KEY, next ? "1" : "0");
-      } catch {
-        /* ignore */
+  const context: ExplainContextParams | undefined = explainContext
+    ? {
+        ...explainContext,
+        source: "transcript",
+        turnId: turn.id,
       }
-      return next;
-    });
-  };
+    : undefined;
 
-  const hasExplanation = Boolean(explanation?.trim());
+  const dialogue = (
+    <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+      <GlossaryText text={turn.content} entries={glossaryEntries} />
+    </div>
+  );
 
   return (
     <li className="ml-0 flex justify-start sm:ml-4">
@@ -62,34 +56,32 @@ export function DiscussionTurn({
         className={`max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${palette.border} ${palette.bg}`}
       >
         <RoleBadge role={fallbackRole} compact />
-        <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-          <GlossaryText text={turn.content} entries={glossaryEntries} />
-        </div>
-
-        {hasExplanation ? (
-          <div className="mt-3 border-l-2 border-zinc-300 pl-3 dark:border-zinc-600">
-            {showExplanationToggle ? (
-              <button
-                type="button"
-                onClick={toggleExplanations}
-                className="mb-1 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
-                aria-expanded={explanationsExpanded}
-              >
-                Plain-language explanation
-                <span className="ml-1">{explanationsExpanded ? "▾" : "▸"}</span>
-              </button>
-            ) : (
-              <p className="mb-1 text-xs font-medium text-zinc-500 dark:text-zinc-400">
-                Plain-language explanation
-              </p>
-            )}
-            {explanationsExpanded || !showExplanationToggle ? (
-              <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
-                {explanation}
-              </p>
+        {context ? (
+          <SelectableExplain
+            context={context}
+            blockText={turn.content}
+            showBlockExplain
+            disabled={explainDisabled}
+          >
+            {dialogue}
+            {explanation ? (
+              <PlainLanguageBlock
+                explanation={explanation}
+                showToggle={showExplanationToggle}
+              />
             ) : null}
-          </div>
-        ) : null}
+          </SelectableExplain>
+        ) : (
+          <>
+            {dialogue}
+            {explanation ? (
+              <PlainLanguageBlock
+                explanation={explanation}
+                showToggle={showExplanationToggle}
+              />
+            ) : null}
+          </>
+        )}
       </div>
     </li>
   );

@@ -2,10 +2,17 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { BriefingSection } from "@/components/BriefingSection";
 import { DiscussionTurn } from "@/components/DiscussionTurn";
 import { GlossaryPanel } from "@/components/GlossaryPanel";
-import { GlossaryText } from "@/components/GlossaryText";
 import { RoleLegend } from "@/components/RoleLegend";
+import type { ExplainContextParams } from "@/components/SelectableExplain";
+import { indexBriefingExplanations } from "@/lib/briefing-explanations";
+import {
+  buildBriefingSnippet,
+  buildMeetingGoal,
+  buildTranscriptSnippet,
+} from "@/lib/explain-context";
 import { getRolePalette } from "@/lib/role-colors";
 import type { BoardStreamEvent } from "@/lib/board-events";
 import type {
@@ -26,6 +33,7 @@ export default function Home() {
   const [briefing, setBriefing] = useState<ChairBriefing | null>(null);
   const [readerGuide, setReaderGuide] = useState<ReaderGuide | null>(null);
   const [glossary, setGlossary] = useState<Glossary | null>(null);
+  const [discussionMaximized, setDiscussionMaximized] = useState(false);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
@@ -50,10 +58,41 @@ export default function Home() {
     return map;
   }, [readerGuide]);
 
+  const briefingExplanationByKey = useMemo(
+    () => indexBriefingExplanations(readerGuide?.briefingExplanations),
+    [readerGuide],
+  );
+
+  const explainDisabled = loading || !brief.trim();
+
+  const baseExplainContext = useMemo((): ExplainContextParams | undefined => {
+    if (!brief.trim()) return undefined;
+    return {
+      source: "transcript",
+      userBrief: brief,
+      meetingGoal: buildMeetingGoal(meetingPlan),
+      transcriptSnippet: buildTranscriptSnippet(turns),
+      briefingSnippet: briefing ? buildBriefingSnippet(briefing) : undefined,
+    };
+  }, [brief, meetingPlan, turns, briefing]);
+
   useEffect(() => {
     if (!chatEndRef.current || !chatScrollRef.current) return;
     chatEndRef.current.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [turns.length, meetingPlan, briefing, readerGuide]);
+
+  useEffect(() => {
+    if (!discussionMaximized) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDiscussionMaximized(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = "";
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [discussionMaximized]);
 
   const runBoard = useCallback(async () => {
     setError(null);
@@ -178,7 +217,8 @@ export default function Home() {
           Describe your business idea or decision. The Chair convenes experts; each
           message shows the expert&apos;s title. Expert dialogue is unchanged
           — plain-language explanations and glossary terms are added separately after
-          the discussion. Hover underlined words for quick definitions.
+          the discussion. Hover underlined words for quick definitions, or select text
+          and press Explain for phrase-level help.
         </p>
       </header>
 
@@ -281,42 +321,74 @@ export default function Home() {
             </section>
           ) : null}
 
-          <section className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+          <section
+            className={
+              discussionMaximized
+                ? "fixed inset-0 z-50 flex flex-col gap-3 overflow-hidden bg-zinc-50 p-4 dark:bg-zinc-950 sm:p-6"
+                : "space-y-3"
+            }
+          >
+            <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
               <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
                 Discussion
               </h2>
-              <button
-                type="button"
-                onClick={() =>
-                  copyText(
-                    "transcript",
-                    JSON.stringify({ turns }, null, 2),
-                  )
-                }
-                disabled={turns.length === 0}
-                className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
-              >
-                Copy transcript JSON
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => setDiscussionMaximized((v) => !v)}
+                  className="rounded-md border border-zinc-200 bg-white px-2.5 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  aria-pressed={discussionMaximized}
+                >
+                  {discussionMaximized ? "Exit full screen" : "Full screen"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() =>
+                    copyText(
+                      "transcript",
+                      JSON.stringify({ turns }, null, 2),
+                    )
+                  }
+                  disabled={turns.length === 0}
+                  className="text-xs font-medium text-zinc-600 underline hover:text-zinc-900 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-100"
+                >
+                  Copy transcript JSON
+                </button>
+              </div>
             </div>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400">
-              Model-generated advisory dialogue. Each bubble shows the expert&apos;s title.
-              Underlined segments have glossary tooltips when available.
-            </p>
-            {discussionInProgress ? (
-              <p className="text-xs text-zinc-500 italic dark:text-zinc-400">
-                Plain-language explanations will appear when the discussion finishes.
-              </p>
-            ) : null}
+            {!discussionMaximized ? (
+              <>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                  Model-generated advisory dialogue. Each bubble shows the expert&apos;s
+                  title. Underlined segments have glossary tooltips. Select any phrase and
+                  click Explain, or use Explain this on a message.
+                </p>
+                {glossaryEntries.length > 0 ? (
+                  <GlossaryPanel entries={glossaryEntries} />
+                ) : null}
+                {discussionInProgress ? (
+                  <p className="text-xs text-zinc-500 italic dark:text-zinc-400">
+                    Plain-language explanations will appear when the discussion finishes.
+                  </p>
+                ) : null}
 
-            {meetingPlan && meetingPlan.roles.length > 0 ? (
-              <RoleLegend roles={meetingPlan.roles} />
-            ) : null}
+                {meetingPlan && meetingPlan.roles.length > 0 ? (
+                  <RoleLegend roles={meetingPlan.roles} />
+                ) : null}
+              </>
+            ) : (
+              <p className="shrink-0 text-xs text-zinc-500 dark:text-zinc-400">
+                Press Esc or Exit full screen to return. Scroll below for the full thread.
+              </p>
+            )}
 
             <div
               ref={chatScrollRef}
-              className="max-h-[min(28rem,50vh)] min-h-[12rem] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              className={
+                discussionMaximized
+                  ? "min-h-0 flex-1 space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-white/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/60"
+                  : "max-h-[min(28rem,50vh)] min-h-[12rem] space-y-3 overflow-y-auto rounded-xl border border-zinc-200 bg-zinc-50/50 p-3 dark:border-zinc-800 dark:bg-zinc-900/40"
+              }
             >
               {readerGuide?.threadFraming ? (
                 <div className="rounded-lg border border-zinc-200 bg-white/90 px-3 py-2 text-xs leading-relaxed text-zinc-700 dark:border-zinc-700 dark:bg-zinc-950/80 dark:text-zinc-300">
@@ -339,18 +411,23 @@ export default function Home() {
                     glossaryEntries={glossaryEntries}
                     explanation={explanationByTurnId.get(t.id)}
                     showExplanationToggle={Boolean(readerGuide)}
+                    explainContext={
+                      baseExplainContext
+                        ? {
+                            ...baseExplainContext,
+                            transcriptSnippet: buildTranscriptSnippet(turns, t.id),
+                          }
+                        : undefined
+                    }
+                    explainDisabled={explainDisabled}
                   />
                 ))}
               </ul>
               <div ref={chatEndRef} />
             </div>
-
-            {glossaryEntries.length > 0 ? (
-              <GlossaryPanel entries={glossaryEntries} />
-            ) : null}
           </section>
 
-          {briefing ? (
+          {briefing && baseExplainContext ? (
             <section className="space-y-4 rounded-xl border border-zinc-200 bg-zinc-50/50 p-4 dark:border-zinc-800 dark:bg-zinc-900/30">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <h2 className="text-lg font-medium text-zinc-900 dark:text-zinc-50">
@@ -367,54 +444,92 @@ export default function Home() {
                 </button>
               </div>
 
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                  Thesis
-                </h3>
-                <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-                  <GlossaryText text={briefing.thesis} entries={glossaryEntries} />
-                </p>
-              </div>
-
+              <BriefingSection
+                title="Executive summary"
+                text={briefing.executiveSummary}
+                section="executiveSummary"
+                glossaryEntries={glossaryEntries}
+                explanation={briefingExplanationByKey.get("executiveSummary")}
+                showExplanationToggle={Boolean(readerGuide)}
+                explainContext={baseExplainContext}
+                explainDisabled={explainDisabled}
+              />
+              <BriefingSection
+                title="Thesis"
+                text={briefing.thesis}
+                section="thesis"
+                glossaryEntries={glossaryEntries}
+                explanation={briefingExplanationByKey.get("thesis")}
+                showExplanationToggle={Boolean(readerGuide)}
+                explainContext={baseExplainContext}
+                explainDisabled={explainDisabled}
+              />
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
                   Key risks
                 </h3>
-                <ul className="list-inside list-disc text-sm text-zinc-800 dark:text-zinc-200">
+                <ul className="list-inside list-disc">
                   {briefing.keyRisks.map((x, i) => (
-                    <li key={i}>
-                      <GlossaryText text={x} entries={glossaryEntries} />
-                    </li>
+                    <BriefingSection
+                      key={i}
+                      title=""
+                      text={x}
+                      section="keyRisks"
+                      sectionIndex={i}
+                      glossaryEntries={glossaryEntries}
+                      explanation={briefingExplanationByKey.get(`keyRisks:${i}`)}
+                      showExplanationToggle={Boolean(readerGuide)}
+                      explainContext={baseExplainContext}
+                      explainDisabled={explainDisabled}
+                      asListItem
+                    />
                   ))}
                 </ul>
               </div>
-
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
                   Experiments
                 </h3>
-                <ul className="list-inside list-disc text-sm text-zinc-800 dark:text-zinc-200">
+                <ul className="list-inside list-disc">
                   {briefing.experiments.map((x, i) => (
-                    <li key={i}>
-                      <GlossaryText text={x} entries={glossaryEntries} />
-                    </li>
+                    <BriefingSection
+                      key={i}
+                      title=""
+                      text={x}
+                      section="experiments"
+                      sectionIndex={i}
+                      glossaryEntries={glossaryEntries}
+                      explanation={briefingExplanationByKey.get(`experiments:${i}`)}
+                      showExplanationToggle={Boolean(readerGuide)}
+                      explainContext={baseExplainContext}
+                      explainDisabled={explainDisabled}
+                      asListItem
+                    />
                   ))}
                 </ul>
               </div>
-
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
                   7-day plan
                 </h3>
-                <ol className="list-inside list-decimal text-sm text-zinc-800 dark:text-zinc-200">
+                <ol className="list-inside list-decimal">
                   {briefing.sevenDayPlan.map((x, i) => (
-                    <li key={i}>
-                      <GlossaryText text={x} entries={glossaryEntries} />
-                    </li>
+                    <BriefingSection
+                      key={i}
+                      title=""
+                      text={x}
+                      section="sevenDayPlan"
+                      sectionIndex={i}
+                      glossaryEntries={glossaryEntries}
+                      explanation={briefingExplanationByKey.get(`sevenDayPlan:${i}`)}
+                      showExplanationToggle={Boolean(readerGuide)}
+                      explainContext={baseExplainContext}
+                      explainDisabled={explainDisabled}
+                      asListItem
+                    />
                   ))}
                 </ol>
               </div>
-
               <div className="space-y-2">
                 <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
                   Open questions
@@ -422,27 +537,38 @@ export default function Home() {
                 {briefing.openQuestions.length === 0 ? (
                   <p className="text-sm text-zinc-500">None listed.</p>
                 ) : (
-                  <ul className="list-inside list-disc text-sm text-zinc-800 dark:text-zinc-200">
+                  <ul className="list-inside list-disc">
                     {briefing.openQuestions.map((x, i) => (
-                      <li key={i}>
-                        <GlossaryText text={x} entries={glossaryEntries} />
-                      </li>
+                      <BriefingSection
+                        key={i}
+                        title=""
+                        text={x}
+                        section="openQuestions"
+                        sectionIndex={i}
+                        glossaryEntries={glossaryEntries}
+                        explanation={briefingExplanationByKey.get(`openQuestions:${i}`)}
+                        showExplanationToggle={Boolean(readerGuide)}
+                        explainContext={baseExplainContext}
+                        explainDisabled={explainDisabled}
+                        asListItem
+                      />
                     ))}
                   </ul>
                 )}
               </div>
-
               {briefing.dissentOrUnresolved ? (
-                <div className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                  <h3 className="text-xs font-semibold uppercase text-amber-700 dark:text-amber-400">
-                    Dissent / unresolved
-                  </h3>
-                  <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-                    <GlossaryText
-                      text={briefing.dissentOrUnresolved}
-                      entries={glossaryEntries}
-                    />
-                  </p>
+                <div className="border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                  <BriefingSection
+                    title="Dissent / unresolved"
+                    text={briefing.dissentOrUnresolved}
+                    section="dissentOrUnresolved"
+                    glossaryEntries={glossaryEntries}
+                    explanation={briefingExplanationByKey.get("dissentOrUnresolved")}
+                    showExplanationToggle={Boolean(readerGuide)}
+                    explainContext={baseExplainContext}
+                    explainDisabled={explainDisabled}
+                    titleTone="warning"
+                  />
                 </div>
               ) : null}
             </section>

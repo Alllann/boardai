@@ -68,11 +68,16 @@ export async function runBoardSessionWithEvents(
     await sink({ type: "turn", payload: turn });
   }
 
-  const [briefing, readerGuide] = await Promise.all([
-    generateBriefing(userBrief, plan, turns, options),
-    generateReaderGuide(userBrief, plan, turns, options),
-  ]);
+  const briefing = await generateBriefing(userBrief, plan, turns, options);
   await sink({ type: "briefing", payload: briefing });
+
+  const readerGuide = await generateReaderGuide(
+    userBrief,
+    plan,
+    turns,
+    briefing,
+    options,
+  );
   await sink({ type: "reader_guide", payload: readerGuide });
 
   const glossary = await generateGlossary(userBrief, plan, turns, briefing, options);

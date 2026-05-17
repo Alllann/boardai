@@ -92,6 +92,7 @@ ${params.transcriptText}
 
 Output ONLY valid JSON (no markdown, no commentary) with this exact shape:
 {
+  "executiveSummary": "string — 2 to 4 short sentences, plain prose, no bullet lists",
   "thesis": "string",
   "keyRisks": ["string"],
   "experiments": ["string — each item should imply how to validate"],
@@ -99,6 +100,10 @@ Output ONLY valid JSON (no markdown, no commentary) with this exact shape:
   "openQuestions": ["string"],
   "dissentOrUnresolved": "optional string — summarize unresolved debate if any"
 }
+
+Field guidance:
+- executiveSummary: Outcome-first for a busy owner — clear recommendation (go / no-go / pivot / investigate), the single strongest reason in one line, and the immediate next move. No jargon; do not repeat the 7-day plan verbatim.
+- thesis: The board's synthesized position after debate — may include tradeoffs and framing; can be more nuanced than the summary above.
 
 If experts disagreed, use dissentOrUnresolved to name the disagreement and what remains undecided. Arrays must be non-empty except openQuestions may be empty only if truly none.`;
 }

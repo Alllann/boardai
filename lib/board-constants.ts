@@ -18,3 +18,10 @@ export const GLOSSARY_MAX_ENTRIES = 25;
 /** UI cap for per-turn reader explanations (model may overshoot; we clamp). */
 export const MAX_READER_EXPLANATION_CHARS = 400;
 export const MAX_READER_THREAD_FRAMING_CHARS = 600;
+/** Chair briefing executive summary (model may overshoot; we clamp). */
+export const MAX_EXECUTIVE_SUMMARY_CHARS = 600;
+
+/** On-demand explain: selection length bounds (characters). */
+export const EXPLAIN_MIN_SELECTION_CHARS = 8;
+export const EXPLAIN_MAX_SELECTION_CHARS = 500;
+export const MAX_ON_DEMAND_EXPLAIN_CHARS = 900;

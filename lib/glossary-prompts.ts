@@ -12,6 +12,7 @@ export function buildGlossaryBundle(
     .join("\n\n");
 
   const briefingBlock = [
+    `Executive summary: ${briefing.executiveSummary}`,
     `Thesis: ${briefing.thesis}`,
     `Key risks: ${briefing.keyRisks.join(" | ")}`,
     `Experiments: ${briefing.experiments.join(" | ")}`,
