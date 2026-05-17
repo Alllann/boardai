@@ -40,7 +40,7 @@ ${req.selection.trim()}
 
 Rules:
 - Output plain prose only (no JSON, no markdown headings). Maximum ${MAX_ON_DEMAND_EXPLAIN_CHARS} characters.
-- Explain keywords in the selection, then what the selection means in this meeting in plain language.
+- Briefly explain keywords or key phrases in the selection, then briefly explain what the selection means in this meeting in plain language.
 - Do NOT rewrite, quote, or replace the selected wording. Do NOT speak as the expert or Chair.
 - If the selection is ambiguous, say what is ambiguous and give the most likely reading.
 - If the selection is too vague (e.g. a single common word), say so briefly and explain the nearest meaningful phrase from context.

@@ -74,6 +74,8 @@ export function SelectableExplain({
   className,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
   const popoverId = useId();
   const [toolbar, setToolbar] = useState<ToolbarState | null>(null);
   const [pendingSelection, setPendingSelection] = useState<string | null>(null);
@@ -100,6 +102,21 @@ export function SelectableExplain({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [dismiss]);
+
+  useEffect(() => {
+    if (!toolbar && !popover) return;
+
+    const onPointerDown = (e: MouseEvent) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (toolbarRef.current?.contains(target)) return;
+      if (popoverRef.current?.contains(target)) return;
+      dismiss();
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [toolbar, popover, dismiss]);
 
   const buildRequest = useCallback(
     (selection: string, surroundingParagraph: string): ExplainRequest => ({
@@ -237,6 +254,7 @@ export function SelectableExplain({
       <>
         {toolbar && !popover ? (
           <div
+            ref={toolbarRef}
             role="toolbar"
             aria-label="Selection actions"
             className="fixed z-50 -translate-x-1/2 -translate-y-full"
@@ -255,6 +273,7 @@ export function SelectableExplain({
 
         {popover ? (
           <div
+            ref={popoverRef}
             id={popoverId}
             role="dialog"
             aria-label="Explanation"
