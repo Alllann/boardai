@@ -6,9 +6,12 @@ const EXPLANATIONS_EXPANDED_KEY = "boardai-explanations-expanded";
 
 function readExpandedPreference(): boolean {
   try {
-    return sessionStorage.getItem(EXPLANATIONS_EXPANDED_KEY) !== "0";
+    const v = sessionStorage.getItem(EXPLANATIONS_EXPANDED_KEY);
+    if (v === "1") return true;
+    if (v === "0") return false;
+    return false;
   } catch {
-    return true;
+    return false;
   }
 }
 

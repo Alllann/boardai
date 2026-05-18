@@ -24,3 +24,29 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+@keyframes explain-pending-glow {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgb(161 161 170 / 0.35);
+  }
+  50% {
+    box-shadow: 0 0 10px 2px rgb(161 161 170 / 0.55);
+  }
+}
+
+.explain-pending-glow {
+  animation: explain-pending-glow 1.4s ease-in-out infinite;
+}
+
+@media (prefers-color-scheme: dark) {
+  @keyframes explain-pending-glow {
+    0%,
+    100% {
+      box-shadow: 0 0 0 0 rgb(113 113 122 / 0.4);
+    }
+    50% {
+      box-shadow: 0 0 12px 3px rgb(161 161 170 / 0.45);
+    }
+  }
+}

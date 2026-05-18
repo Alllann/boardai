@@ -102,6 +102,10 @@ export function SelectableExplain({
   const [popover, setPopover] = useState<PopoverState | null>(null);
   const [popoverAnchor, setPopoverAnchor] = useState<ToolbarState | null>(null);
   const [highlights, setHighlights] = useState<ExplainHighlight[]>([]);
+  const [loadingHighlight, setLoadingHighlight] = useState<{
+    start: number;
+    end: number;
+  } | null>(null);
   const mounted = useSyncExternalStore(
     () => () => {},
     () => true,
@@ -143,6 +147,7 @@ export function SelectableExplain({
     setToolbar(null);
     setPendingSelection(null);
     setPendingOffsets(null);
+    setLoadingHighlight(null);
     setPopover(null);
     setPopoverAnchor(null);
   }, []);
@@ -222,6 +227,11 @@ export function SelectableExplain({
       setToolbar(null);
       setPendingSelection(trimmed);
       setPopoverAnchor(anchor);
+      if (resolvedOffsets) {
+        setLoadingHighlight(resolvedOffsets);
+      } else {
+        setLoadingHighlight(null);
+      }
 
       const cacheKey = explainCacheKey({
         selection: trimmed,
@@ -232,6 +242,7 @@ export function SelectableExplain({
       });
       const cached = getCachedExplanation(cacheKey);
       if (cached) {
+        setLoadingHighlight(null);
         setPopover({ status: "ready", selection: trimmed, explanation: cached });
         if (resolvedOffsets) addHighlight(resolvedOffsets, trimmed, cached);
         return;
@@ -250,6 +261,7 @@ export function SelectableExplain({
           error?: string;
         };
         if (!res.ok) {
+          setLoadingHighlight(null);
           setPopover({
             status: "error",
             selection: trimmed,
@@ -259,6 +271,7 @@ export function SelectableExplain({
         }
         const explanation = data.explanation?.trim();
         if (!explanation) {
+          setLoadingHighlight(null);
           setPopover({
             status: "error",
             selection: trimmed,
@@ -267,9 +280,11 @@ export function SelectableExplain({
           return;
         }
         setCachedExplanation(cacheKey, explanation);
+        setLoadingHighlight(null);
         setPopover({ status: "ready", selection: trimmed, explanation });
         if (resolvedOffsets) addHighlight(resolvedOffsets, trimmed, explanation);
       } catch (e) {
+        setLoadingHighlight(null);
         setPopover({
           status: "error",
           selection: trimmed,
@@ -438,7 +453,7 @@ export function SelectableExplain({
               {popover.selection.length > 120 ? "\u2026" : ""}&rdquo;
             </p>
             {popover.status === "loading" ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Loading?</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Loading…</p>
             ) : null}
             {popover.status === "ready" ? (
               <p className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
@@ -486,6 +501,7 @@ export function SelectableExplain({
             text={text}
             entries={glossaryEntries}
             highlights={highlights}
+            pendingHighlight={loadingHighlight}
             onExplainHighlightClick={handleHighlightClick}
           />
         </div>

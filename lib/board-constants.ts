@@ -13,7 +13,7 @@ export const MAX_BRIEF_CHARS = 12_000;
 export const ROLE_ID_REGEX = /^[a-z][a-z0-9_]{1,39}$/;
 
 /** Max glossary terms surfaced in the UI (model may overshoot; we clamp). */
-export const GLOSSARY_MAX_ENTRIES = 25;
+export const GLOSSARY_MAX_ENTRIES = 60;
 
 /** Safety cap for per-turn reader explanations (model may overshoot; we clamp). */
 export const MAX_READER_EXPLANATION_CHARS = 8_000;

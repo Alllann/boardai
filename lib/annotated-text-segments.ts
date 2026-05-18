@@ -5,11 +5,17 @@ import type { GlossaryEntry } from "@/lib/schemas";
 export type AnnotatedSegment =
   | TextSegment
   | {
+      kind: "explain-pending";
+      text: string;
+    }
+  | {
       kind: "explain";
       id: string;
       text: string;
       explanation: string;
     };
+
+export type TextRange = { start: number; end: number };
 
 function overlaps(
   a: { start: number; end: number },
@@ -21,41 +27,89 @@ function overlaps(
 /**
  * Glossary terms in plain regions, with explain highlights taking precedence.
  */
+function mergeRanges(
+  textLength: number,
+  highlights: ExplainHighlight[],
+  pending?: TextRange | null,
+): Array<
+  | { kind: "explain"; highlight: ExplainHighlight }
+  | { kind: "explain-pending"; range: TextRange }
+> {
+  const validHighlights = highlights
+    .filter((h) => h.start >= 0 && h.end <= textLength && h.end > h.start)
+    .sort((a, b) => a.start - b.start);
+
+  const nonOverlapping: ExplainHighlight[] = [];
+  for (const h of validHighlights) {
+    if (nonOverlapping.some((p) => overlaps(p, h))) continue;
+    nonOverlapping.push(h);
+  }
+
+  const merged: Array<
+    | { kind: "explain"; highlight: ExplainHighlight }
+    | { kind: "explain-pending"; range: TextRange }
+  > = nonOverlapping.map((highlight) => ({ kind: "explain", highlight }));
+
+  if (
+    pending &&
+    pending.start >= 0 &&
+    pending.end <= textLength &&
+    pending.end > pending.start &&
+    !nonOverlapping.some((h) => overlaps(h, pending))
+  ) {
+    merged.push({ kind: "explain-pending", range: pending });
+    merged.sort((a, b) => {
+      const startA = a.kind === "explain" ? a.highlight.start : a.range.start;
+      const startB = b.kind === "explain" ? b.highlight.start : b.range.start;
+      return startA - startB;
+    });
+  }
+
+  return merged;
+}
+
 export function buildAnnotatedSegments(
   text: string,
   entries: GlossaryEntry[],
   highlights: ExplainHighlight[],
+  pendingHighlight?: TextRange | null,
 ): AnnotatedSegment[] {
   if (!text) return [];
 
-  const validHighlights = highlights
-    .filter((h) => h.start >= 0 && h.end <= text.length && h.end > h.start)
-    .sort((a, b) => a.start - b.start);
+  const merged = mergeRanges(text.length, highlights, pendingHighlight);
 
-  const nonOverlappingHighlights: ExplainHighlight[] = [];
-  for (const h of validHighlights) {
-    if (nonOverlappingHighlights.some((p) => overlaps(p, h))) continue;
-    nonOverlappingHighlights.push(h);
-  }
-
-  if (nonOverlappingHighlights.length === 0) {
+  if (merged.length === 0) {
     return buildGlossarySegments(text, entries);
   }
 
   const out: AnnotatedSegment[] = [];
   let cursor = 0;
 
-  for (const h of nonOverlappingHighlights) {
-    if (h.start > cursor) {
-      out.push(...buildGlossarySegments(text.slice(cursor, h.start), entries));
+  for (const item of merged) {
+    if (item.kind === "explain") {
+      const h = item.highlight;
+      if (h.start > cursor) {
+        out.push(...buildGlossarySegments(text.slice(cursor, h.start), entries));
+      }
+      out.push({
+        kind: "explain",
+        id: h.id,
+        text: text.slice(h.start, h.end),
+        explanation: h.explanation,
+      });
+      cursor = h.end;
+      continue;
+    }
+
+    const { range } = item;
+    if (range.start > cursor) {
+      out.push(...buildGlossarySegments(text.slice(cursor, range.start), entries));
     }
     out.push({
-      kind: "explain",
-      id: h.id,
-      text: text.slice(h.start, h.end),
-      explanation: h.explanation,
+      kind: "explain-pending",
+      text: text.slice(range.start, range.end),
     });
-    cursor = h.end;
+    cursor = range.end;
   }
 
   if (cursor < text.length) {
