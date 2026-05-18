@@ -114,16 +114,16 @@
   },
   {
     "id": "chair-briefing-summary",
-    "description": "Chair executive summary — should explain Chair's message, not impersonate Chair.",
+    "description": "Chair headline — should explain Chair's message, not impersonate Chair.",
     "tags": ["briefing", "rule_compliance"],
     "request": {
       "selection": "defer the Series B conversation until unit economics stabilize",
-      "surroundingParagraph": "Executive summary: The Chair recommends we defer the Series B conversation until unit economics stabilize.",
+      "surroundingParagraph": "Headline: Defer the Series B conversation until unit economics stabilize.",
       "source": "briefing",
-      "section": "executiveSummary",
+      "section": "headline",
       "userBrief": "First-time fundraiser; explain what the Chair is advising and why.",
       "meetingGoal": "Align on fundraising timing.",
-      "briefingSnippet": "Executive summary: The Chair recommends we defer the Series B conversation until unit economics stabilize.\nThesis: Focus on retention and gross margin for two quarters.\nKey risks: Burn rate | Competitive pricing pressure"
+      "briefingSnippet": "Headline: Defer the Series B conversation until unit economics stabilize.\nKey takeaways: Fix retention before raising | Gross margin must cover CAC\nThesis: Focus on retention and gross margin for two quarters.\nKey risks: Burn rate | Competitive pricing pressure"
     }
   },
   {

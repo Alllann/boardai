@@ -30,7 +30,8 @@ export function buildTranscriptSnippet(
 
 export function buildBriefingSnippet(briefing: ChairBriefing): string {
   const parts = [
-    `Executive summary: ${briefing.executiveSummary}`,
+    `Headline: ${briefing.headline}`,
+    `Key takeaways: ${briefing.keyTakeaways.slice(0, 3).join(" | ")}`,
     `Thesis: ${briefing.thesis}`,
     `Key risks: ${briefing.keyRisks.slice(0, 3).join(" | ")}`,
   ];

@@ -3,7 +3,8 @@ import { z } from "zod";
 import {
   GLOSSARY_MAX_ENTRIES,
   MAX_BRIEF_CHARS,
-  MAX_EXECUTIVE_SUMMARY_CHARS,
+  MAX_HEADLINE_CHARS,
+  MAX_TAKEAWAY_CHARS,
   MAX_ON_DEMAND_EXPLAIN_CHARS,
   MAX_READER_EXPLANATION_CHARS,
   MAX_READER_THREAD_FRAMING_CHARS,
@@ -51,10 +52,14 @@ export const meetingPlanSchema = z
 export type MeetingPlan = z.infer<typeof meetingPlanSchema>;
 
 export const briefingSchema = z.object({
-  executiveSummary: z
+  headline: z
     .string()
     .min(1)
-    .transform((s) => clampText(MAX_EXECUTIVE_SUMMARY_CHARS, s)),
+    .transform((s) => clampText(MAX_HEADLINE_CHARS, s)),
+  keyTakeaways: z
+    .array(z.string().min(1).transform((s) => clampText(MAX_TAKEAWAY_CHARS, s)))
+    .min(2)
+    .max(5),
   thesis: z.string().min(1),
   keyRisks: z.array(z.string()).min(1),
   experiments: z.array(z.string()).min(1),
@@ -107,7 +112,8 @@ const turnExplanationSchema = z.object({
 export type TurnExplanation = z.infer<typeof turnExplanationSchema>;
 
 export const briefingSectionSchema = z.enum([
-  "executiveSummary",
+  "headline",
+  "keyTakeaways",
   "thesis",
   "keyRisks",
   "experiments",

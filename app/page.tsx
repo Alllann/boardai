@@ -445,31 +445,65 @@ export default function Home() {
                 </button>
               </div>
 
-              <BriefingSection
-                title="Executive summary"
-                text={briefing.executiveSummary}
-                section="executiveSummary"
-                glossaryEntries={glossaryEntries}
-                explanation={briefingExplanationByKey.get("executiveSummary")}
-                showExplanationToggle={Boolean(readerGuide)}
-                explainContext={baseExplainContext}
-                explainDisabled={explainDisabled}
-              />
-              <BriefingSection
-                title="Thesis"
-                text={briefing.thesis}
-                section="thesis"
-                glossaryEntries={glossaryEntries}
-                explanation={briefingExplanationByKey.get("thesis")}
-                showExplanationToggle={Boolean(readerGuide)}
-                explainContext={baseExplainContext}
-                explainDisabled={explainDisabled}
-              />
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                  Key risks
-                </h3>
-                <ul className="list-inside list-disc">
+              <div className="space-y-3 rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-950/80">
+                <div className="text-base font-semibold leading-snug text-zinc-900 dark:text-zinc-50">
+                  <BriefingSection
+                    title=""
+                    text={briefing.headline}
+                    section="headline"
+                    glossaryEntries={glossaryEntries}
+                    explanation={briefingExplanationByKey.get("headline")}
+                    showExplanationToggle={Boolean(readerGuide)}
+                    explainContext={baseExplainContext}
+                    explainDisabled={explainDisabled}
+                  />
+                </div>
+                <div className="space-y-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                    Key takeaways
+                  </h3>
+                  <ul className="list-outside list-disc space-y-2 pl-5">
+                    {briefing.keyTakeaways.map((x, i) => (
+                      <BriefingSection
+                        key={i}
+                        title=""
+                        text={x}
+                        section="keyTakeaways"
+                        sectionIndex={i}
+                        glossaryEntries={glossaryEntries}
+                        explanation={briefingExplanationByKey.get(`keyTakeaways:${i}`)}
+                        showExplanationToggle={Boolean(readerGuide)}
+                        explainContext={baseExplainContext}
+                        explainDisabled={explainDisabled}
+                        asListItem
+                      />
+                    ))}
+                  </ul>
+                </div>
+              </div>
+
+              <div className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-700 dark:bg-zinc-900/50">
+                <BriefingSection
+                  title="Board conclusion"
+                  text={briefing.thesis}
+                  section="thesis"
+                  glossaryEntries={glossaryEntries}
+                  explanation={briefingExplanationByKey.get("thesis")}
+                  showExplanationToggle={Boolean(readerGuide)}
+                  explainContext={baseExplainContext}
+                  explainDisabled={explainDisabled}
+                />
+              </div>
+
+              <div className="space-y-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Risks & validation
+                </p>
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                    Key risks
+                  </h3>
+                  <ul className="list-outside list-disc space-y-2 pl-5">
                   {briefing.keyRisks.map((x, i) => (
                     <BriefingSection
                       key={i}
@@ -487,11 +521,11 @@ export default function Home() {
                   ))}
                 </ul>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                  Experiments
-                </h3>
-                <ul className="list-inside list-disc">
+                <div className="space-y-2">
+                  <h3 className="text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                    Experiments
+                  </h3>
+                  <ul className="list-outside list-disc space-y-2 pl-5">
                   {briefing.experiments.map((x, i) => (
                     <BriefingSection
                       key={i}
@@ -508,12 +542,14 @@ export default function Home() {
                     />
                   ))}
                 </ul>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
-                  7-day plan
-                </h3>
-                <ol className="list-inside list-decimal">
+
+              <div className="space-y-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Next steps
+                </p>
+                <ol className="list-outside list-decimal space-y-2 pl-5">
                   {briefing.sevenDayPlan.map((x, i) => (
                     <BriefingSection
                       key={i}
@@ -531,14 +567,14 @@ export default function Home() {
                   ))}
                 </ol>
               </div>
-              <div className="space-y-2">
-                <h3 className="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">
+              <div className="space-y-2 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
                   Open questions
                 </h3>
                 {briefing.openQuestions.length === 0 ? (
                   <p className="text-sm text-zinc-500">None listed.</p>
                 ) : (
-                  <ul className="list-inside list-disc">
+                  <ul className="list-outside list-disc space-y-2 pl-5">
                     {briefing.openQuestions.map((x, i) => (
                       <BriefingSection
                         key={i}
