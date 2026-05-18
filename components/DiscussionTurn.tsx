@@ -45,9 +45,9 @@ export function DiscussionTurn({
     : undefined;
 
   return (
-    <li className="ml-0 flex justify-start sm:ml-4">
+    <li className="flex justify-start py-0.5">
       <div
-        className={`max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm ${palette.border} ${palette.bg}`}
+        className={`max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border px-3.5 py-2.5 shadow-sm ${palette.border} ${palette.bg}`}
       >
         <RoleBadge role={fallbackRole} compact />
         {context ? (

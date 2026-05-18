@@ -2,7 +2,10 @@
 
 import { useId, useMemo, useState } from "react";
 
-import { buildAnnotatedSegments } from "@/lib/annotated-text-segments";
+import {
+  buildAnnotatedSegments,
+  type TextRange,
+} from "@/lib/annotated-text-segments";
 import type { ExplainHighlight } from "@/lib/explain-highlights";
 import type { GlossaryEntry } from "@/lib/schemas";
 
@@ -10,6 +13,7 @@ type Props = {
   text: string;
   entries: GlossaryEntry[];
   highlights: ExplainHighlight[];
+  pendingHighlight?: TextRange | null;
   onExplainHighlightClick?: (highlight: ExplainHighlight, element: HTMLElement) => void;
   className?: string;
 };
@@ -18,13 +22,14 @@ export function AnnotatedText({
   text,
   entries,
   highlights,
+  pendingHighlight,
   onExplainHighlightClick,
   className,
 }: Props) {
   const baseId = useId();
   const segments = useMemo(
-    () => buildAnnotatedSegments(text, entries, highlights),
-    [text, entries, highlights],
+    () => buildAnnotatedSegments(text, entries, highlights, pendingHighlight),
+    [text, entries, highlights, pendingHighlight],
   );
   const [openGlossaryKey, setOpenGlossaryKey] = useState<string | null>(null);
 
@@ -33,6 +38,17 @@ export function AnnotatedText({
       {segments.map((seg, i) => {
         if (seg.kind === "plain") {
           return <span key={`p-${i}`}>{seg.text}</span>;
+        }
+
+        if (seg.kind === "explain-pending") {
+          return (
+            <mark
+              key={`ep-${i}`}
+              className="explain-pending-glow rounded-sm bg-zinc-300/70 px-0.5 text-inherit ring-1 ring-zinc-400/60 dark:bg-zinc-600/50 dark:ring-zinc-500/50"
+            >
+              {seg.text}
+            </mark>
+          );
         }
 
         if (seg.kind === "explain") {

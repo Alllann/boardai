@@ -1,3 +1,4 @@
+import { BOARD_AUDIENCE_INSTRUCTIONS } from "./board-audience";
 import {
   MAX_READER_EXPLANATION_CHARS,
   MAX_READER_THREAD_FRAMING_CHARS,
@@ -20,7 +21,10 @@ export function buildReaderBundle(
 
   if (briefing) {
     const briefingBlock = [
-      `[section=executiveSummary] ${briefing.executiveSummary}`,
+      `[section=headline] ${briefing.headline}`,
+      ...briefing.keyTakeaways.map(
+        (t, i) => `[section=keyTakeaways index=${i}] ${t}`,
+      ),
       `[section=thesis] ${briefing.thesis}`,
       ...briefing.keyRisks.map(
         (r, i) => `[section=keyRisks index=${i}] ${r}`,
@@ -54,15 +58,17 @@ export function readerGuidePrompt(
 ): string {
   const briefingRules = includeBriefing
     ? `
-- For EVERY Chair briefing block in the material (each [section=…] line), add one entry in \`briefingExplanations\` with matching \`section\` and \`index\` when the block has index=N (omit index for executiveSummary, thesis, dissentOrUnresolved).
-- Briefing explanations: thorough plain-language notes on what the Chair is telling the owner and why it follows from the debate. Do NOT rewrite the Chair's wording.`
+- For EVERY Chair briefing block in the material (each [section=…] line), add one entry in \`briefingExplanations\` with matching \`section\` and \`index\` when the block has index=N (omit index for headline, thesis, dissentOrUnresolved).
+- Briefing explanations: add nuance, tradeoffs, and links to the debate — not a restatement of terms the Chair already explained plainly. Do NOT rewrite the Chair's wording.`
     : "";
 
   const briefingJson = includeBriefing
     ? ',"briefingExplanations":[{"section":"thesis","explanation":"string"},{"section":"keyRisks","index":0,"explanation":"string"}]'
     : "";
 
-  return `You are a reader guide for an advisory board transcript. Your ONLY job is to help a smart reader who is NOT trained in this domain understand what each expert meant and why it mattered in the debate${includeBriefing ? ", and what each part of the Chair's briefing means" : ""}.
+  return `You are a reader guide for an advisory board transcript. Your ONLY job is to help a smart reader who is NOT trained in this domain understand what each expert meant and why it mattered in the debate${includeBriefing ? ", and the nuance behind each part of the Chair's briefing" : ""}.
+
+${BOARD_AUDIENCE_INSTRUCTIONS}
 
 Audience hint from the user's brief (use only to calibrate depth):
 ---
