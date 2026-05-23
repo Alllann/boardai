@@ -17,7 +17,7 @@ export function buildGlossaryBundle(
     `Thesis: ${briefing.thesis}`,
     `Key risks: ${briefing.keyRisks.join(" | ")}`,
     `Experiments: ${briefing.experiments.join(" | ")}`,
-    `7-day plan: ${briefing.sevenDayPlan.join(" | ")}`,
+    `Next steps: ${briefing.sevenDayPlan.join(" | ")}`,
     `Open questions: ${briefing.openQuestions.join(" | ")}`,
     briefing.dissentOrUnresolved
       ? `Dissent / unresolved: ${briefing.dissentOrUnresolved}`

@@ -45,6 +45,7 @@ export async function runBoardSessionWithEvents(
     const prompt = expertTurnPrompt({
       expertTitle: role.title,
       mandate: role.mandate,
+      meetingGoal: plan.meetingGoal,
       otherExperts: otherTitles().filter((o) => o.title !== role.title),
       transcriptLines: formatTranscriptForPrompt(turns),
       chairNotes: plan.chairNotesForFacilitator,

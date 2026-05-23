@@ -87,10 +87,10 @@ export function ChatBriefingCard({
 
           <div className="space-y-3 border-t border-amber-100 pt-3 dark:border-amber-900/40">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Risks & validation
+              Concerns & validation
             </p>
             <div className="space-y-2">
-              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Key risks</p>
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Key concerns</p>
               <ul className="list-outside list-disc space-y-2 pl-4">
                 {briefing.keyRisks.map((x, i) => (
                   <BriefingSection
@@ -133,7 +133,7 @@ export function ChatBriefingCard({
 
           <div className="space-y-2 border-t border-amber-100 pt-3 dark:border-amber-900/40">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Next steps (7 days)
+              Next steps
             </p>
             <ol className="list-outside list-decimal space-y-2 pl-4">
               {briefing.sevenDayPlan.map((x, i) => (

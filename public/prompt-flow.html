@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Board AI — Prompt Flow</title>
+  <style>
+    :root {
+      --bg: #f1f5f9;
+      --surface: #fff;
+      --border: #cbd5e1;
+      --text: #0f172a;
+      --muted: #64748b;
+      --accent: #059669;
+      --mono: ui-monospace, "Cascadia Code", "Segoe UI Mono", monospace;
+      --sans: "Segoe UI", system-ui, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; }
+    body { font-family: var(--sans); background: var(--bg); color: var(--text); display: flex; flex-direction: column; }
+    header {
+      flex-shrink: 0;
+      padding: 0.75rem 1.25rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    header h1 { margin: 0 0 0.2rem; font-size: 1.0625rem; font-weight: 600; }
+    header p { margin: 0; font-size: 0.8125rem; color: var(--muted); max-width: 36rem; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+    .level-tabs { display: flex; gap: 0.35rem; }
+    .level-tabs button {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 0.5rem;
+      padding: 0.4rem 0.75rem;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--muted);
+    }
+    .level-tabs button:hover { border-color: var(--accent); color: var(--accent); }
+    .level-tabs button.active {
+      background: #ecfdf5;
+      border-color: var(--accent);
+      color: #047857;
+    }
+    .level-tabs button span {
+      display: block;
+      font-weight: 400;
+      font-size: 0.625rem;
+      opacity: 0.85;
+    }
+    .zoom-btns { display: flex; gap: 0.35rem; align-items: center; }
+    .zoom-btns button {
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 0.375rem;
+      padding: 0.3rem 0.55rem;
+      font-size: 0.8125rem;
+      cursor: pointer;
+      min-width: 2rem;
+    }
+    .zoom-btns button:hover { border-color: var(--accent); color: var(--accent); }
+    .zoom-label { font-size: 0.75rem; color: var(--muted); min-width: 3rem; text-align: center; }
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      min-height: 0;
+    }
+    @media (max-width: 1050px) {
+      main { grid-template-columns: 1fr; }
+      .prompt-panel { border-left: none; border-top: 1px solid var(--border); max-height: 40vh; }
+    }
+    .diagram-wrap { overflow: auto; padding: 1rem 1.25rem 1.5rem; min-height: 0; }
+    .level-desc {
+      font-size: 0.8125rem;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+      line-height: 1.45;
+    }
+    .chart-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 0.75rem;
+      padding: 1rem;
+      overflow: auto;
+      min-height: 280px;
+    }
+    .level-panel { display: none; }
+    .level-panel.active { display: block; }
+    .level-panel .chart-loading {
+      color: var(--muted);
+      font-size: 0.875rem;
+      padding: 2rem;
+      text-align: center;
+    }
+    .level-panel .chart-error {
+      color: #b91c1c;
+      font-size: 0.8125rem;
+      padding: 1rem;
+    }
+    .mermaid-scaler {
+      transform-origin: top left;
+      transition: transform 0.12s ease;
+      display: inline-block;
+    }
+    .mermaid-wrap svg { display: block; max-width: none; }
+    .mermaid-wrap .nodeLabel,
+    .mermaid-wrap .nodeLabel p,
+    .mermaid-wrap foreignObject div,
+    .mermaid-wrap .label {
+      font-size: 15px !important;
+      line-height: 1.35 !important;
+      font-family: var(--sans) !important;
+    }
+    .mermaid-wrap .edgeLabel { font-size: 11px !important; font-family: var(--sans) !important; }
+    .mermaid-wrap svg .node.prompt-node { cursor: pointer; }
+    .mermaid-wrap svg .node.prompt-node rect,
+    .mermaid-wrap svg .node.prompt-node polygon,
+    .mermaid-wrap svg .node.prompt-node circle {
+      transition: stroke-width 0.12s, filter 0.12s;
+    }
+    .mermaid-wrap svg .node.prompt-node:hover rect,
+    .mermaid-wrap svg .node.prompt-node:hover polygon,
+    .mermaid-wrap svg .node.prompt-node:hover circle,
+    .mermaid-wrap svg .node.prompt-node.prompt-active rect,
+    .mermaid-wrap svg .node.prompt-node.prompt-active polygon,
+    .mermaid-wrap svg .node.prompt-node.prompt-active circle {
+      stroke: var(--accent) !important;
+      stroke-width: 3px !important;
+      filter: drop-shadow(0 3px 8px rgb(0 0 0 / 0.12));
+    }
+    .prompt-panel {
+      background: var(--surface);
+      border-left: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .panel-top { padding: 0.875rem 1rem; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+    .panel-top h2 { margin: 0 0 0.15rem; font-size: 0.9375rem; font-weight: 600; }
+    .panel-file { font-family: var(--mono); font-size: 0.6875rem; color: var(--accent); word-break: break-all; }
+    .panel-hint { margin-top: 0.35rem; font-size: 0.75rem; color: var(--muted); }
+    .panel-body { flex: 1; overflow: auto; padding: 0.875rem 1rem 1.25rem; }
+    .empty { color: var(--muted); font-size: 0.8125rem; text-align: center; padding: 2rem 0.5rem; line-height: 1.55; }
+    pre.prompt { margin: 0; font-family: var(--mono); font-size: 0.6875rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+    .ph { background: #fef9c3; color: #854d0e; padding: 0 0.1rem; border-radius: 2px; }
+    .inj { background: #dbeafe; color: #1e40af; padding: 0 0.1rem; border-radius: 2px; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Board AI — Prompt Flow</h1>
+      <p>Three granularity levels · switch tabs to drill down · use +/− to zoom · hover any node for its prompt</p>
+    </div>
+    <div class="toolbar">
+      <div class="level-tabs" role="tablist">
+        <button type="button" class="active" data-level="1" role="tab" aria-selected="true">L1<span>Overview</span></button>
+        <button type="button" data-level="2" role="tab">L2<span>Session</span></button>
+        <button type="button" data-level="3" role="tab">L3<span>Detail</span></button>
+      </div>
+      <div class="zoom-btns" aria-label="Zoom">
+        <button type="button" id="zoom-out" title="Zoom out">−</button>
+        <span class="zoom-label" id="zoom-label">100%</span>
+        <button type="button" id="zoom-in" title="Zoom in">+</button>
+        <button type="button" id="zoom-fit" title="Fit level">Fit</button>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <div class="diagram-wrap">
+      <!-- LEVEL 1: Overview -->
+      <div class="level-panel active" data-level-panel="1">
+        <p class="level-desc"><strong>Level 1 — Overview.</strong> Three boxes: input, core board run, outputs. Switch to L2/L3 for prompt names and internals.</p>
+        <div class="chart-card">
+          <div class="mermaid-scaler" data-scaler="1">
+            <div class="mermaid-wrap">
+              <pre class="mermaid" id="chart-l1">
+flowchart LR
+  L1_IN(["Submitter brief"])
+  L1_RUN["Board session<br/>POST /api/board/stream"]
+  L1_OUT(["Briefing · reader · glossary"])
+  L1_SIDE["On-demand explain<br/>POST /api/explain"]
+
+  L1_IN --> L1_RUN --> L1_OUT
+  L1_SIDE -.->|parallel| L1_OUT
+
+  classDef sys fill:#f8fafc,stroke:#64748b,stroke-width:2px
+  classDef core fill:#ecfdf5,stroke:#059669,stroke-width:2.5px,color:#065f46
+  classDef out fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px
+  classDef side fill:#fdf2f8,stroke:#db2777,stroke-width:2px
+
+  class L1_IN sys
+  class L1_RUN core
+  class L1_OUT out
+  class L1_SIDE side
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEVEL 2: Session prompts -->
+      <div class="level-panel" data-level-panel="2">
+        <p class="level-desc"><strong>Level 2 — Session.</strong> Each Agent.prompt in order. Expert step runs 10–12 times. Switch to L3 for retries, shared blocks, and injections.</p>
+        <div class="chart-card">
+          <div class="chart-loading" id="loading-l2">Loading level 2…</div>
+          <div class="mermaid-scaler" data-scaler="2" hidden>
+            <div class="mermaid-wrap">
+              <pre class="mermaid" id="chart-l2">
+flowchart LR
+  L2_START(["Start"])
+  L2_PLAN["chairMeetingPlanPrompt"]
+  L2_FIN["finalizeMeetingPlan"]
+  L2_EXPERT["expertTurnPrompt<br/>loop x10-12"]
+  L2_BRIEF["chairBriefingPrompt"]
+  L2_READER["readerGuidePrompt"]
+  L2_GLOSS["glossaryPrompt"]
+  L2_END(["End"])
+
+  L2_START --> L2_PLAN --> L2_FIN --> L2_EXPERT --> L2_BRIEF --> L2_READER --> L2_GLOSS --> L2_END
+
+  classDef chair fill:#fff7ed,stroke:#ea580c,stroke-width:2.5px,color:#7c2d12
+  classDef expert fill:#eff6ff,stroke:#2563eb,stroke-width:2.5px,color:#1e3a8a
+  classDef post fill:#f5f3ff,stroke:#7c3aed,stroke-width:2.5px,color:#4c1d95
+  classDef sys fill:#f8fafc,stroke:#64748b,stroke-width:2px
+
+  class L2_PLAN,L2_BRIEF chair
+  class L2_EXPERT expert
+  class L2_READER,L2_GLOSS post
+  class L2_START,L2_FIN,L2_END sys
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- LEVEL 3: Full detail -->
+      <div class="level-panel" data-level-panel="3">
+        <p class="level-desc"><strong>Level 3 — Detail.</strong> Retries, expert loop, shared prompt blocks (dashed), and on-demand path. Zoom in (+) to read labels.</p>
+        <div class="chart-card">
+          <div class="chart-loading" id="loading-l3">Loading level 3…</div>
+          <div class="mermaid-scaler" data-scaler="3" hidden>
+            <div class="mermaid-wrap">
+              <pre class="mermaid" id="chart-l3">
+flowchart TB
+  subgraph L3_MAIN["Main session"]
+    direction TB
+    L3_START(["Start"])
+    L3_PLAN["chairMeetingPlanPrompt"]
+    L3_PLAN_R["chairMeetingPlanRetryPrompt"]
+    L3_FIN["finalizeMeetingPlan"]
+    L3_EXPERT["expertTurnPrompt"]
+    L3_BRIEF["chairBriefingPrompt"]
+    L3_BRIEF_R["chairBriefingRetryPrompt"]
+    L3_READER["readerGuidePrompt"]
+    L3_GLOSS["glossaryPrompt"]
+    L3_END(["End"])
+
+    L3_START --> L3_PLAN
+    L3_PLAN -->|invalid| L3_PLAN_R --> L3_PLAN
+    L3_PLAN -->|valid| L3_FIN --> L3_EXPERT
+    L3_EXPERT -->|next turn| L3_EXPERT
+    L3_EXPERT -->|done| L3_BRIEF
+    L3_BRIEF -->|invalid| L3_BRIEF_R --> L3_BRIEF
+    L3_BRIEF -->|valid| L3_READER --> L3_GLOSS --> L3_END
+  end
+
+  subgraph L3_SHARED["Shared - board-audience.ts"]
+    direction LR
+    L3_S1["SESSION_PURPOSE"]
+    L3_S2["AUDIENCE"]
+    L3_S3["POINT_STRUCTURE"]
+    L3_S4["PYRAMID_RULES"]
+  end
+
+  subgraph L3_OD["On-demand"]
+    L3_EXPLAIN["onDemandExplainPrompt"]
+  end
+
+  L3_S1 -.-> L3_PLAN
+  L3_S1 -.-> L3_BRIEF
+  L3_S2 -.-> L3_EXPERT
+  L3_S2 -.-> L3_BRIEF
+  L3_S2 -.-> L3_READER
+  L3_S3 -.-> L3_EXPERT
+  L3_S4 -.-> L3_BRIEF
+
+  classDef chair fill:#fff7ed,stroke:#ea580c,stroke-width:2px,color:#7c2d12
+  classDef expert fill:#eff6ff,stroke:#2563eb,stroke-width:2px,color:#1e3a8a
+  classDef post fill:#f5f3ff,stroke:#7c3aed,stroke-width:2px,color:#4c1d95
+  classDef sys fill:#f8fafc,stroke:#64748b,stroke-width:2px
+  classDef shared fill:#f1f5f9,stroke:#64748b,stroke-width:2px
+  classDef od fill:#fdf2f8,stroke:#db2777,stroke-width:2px
+
+  class L3_PLAN,L3_PLAN_R,L3_BRIEF,L3_BRIEF_R chair
+  class L3_EXPERT expert
+  class L3_READER,L3_GLOSS post
+  class L3_START,L3_FIN,L3_END sys
+  class L3_S1,L3_S2,L3_S3,L3_S4 shared
+  class L3_EXPLAIN od
+              </pre>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="prompt-panel">
+      <div class="panel-top">
+        <h2 id="title">Hover a node</h2>
+        <div class="panel-file" id="file"></div>
+        <div class="panel-hint" id="hint">Loading…</div>
+      </div>
+      <div class="panel-body">
+        <div class="empty" id="empty">Pick L1 / L2 / L3, zoom if needed, then hover a node.</div>
+        <pre class="prompt" id="prompt" hidden></pre>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    const SHARED = {
+      sessionPurpose: `This is a generic-purpose deliberative advisory board — not limited to business ideas, startups, or funding decisions.
+- Infer the topic domain from the submitter's brief; do not assume commerce, an "owner," or venture framing unless the brief says so.
+- The meetingGoal is the north star for every expert turn and the Chair briefing.`,
+      audience: `Audience: smart board members from different specialties — not a specialist workshop.
+- Jargon: avoid domain-specific terms; if one is essential, define it in plain language on first use.
+- Reasoning: make your logic audible — what you conclude, what evidence or prior speaker you rely on, and why it matters for the session goal.
+- Tone: deliberative boardroom — conversational, not academic paper or consultant deck.`,
+      prepC: `Structure each substantive message using PREP+C (in flowing prose, not labeled sections):
+1. Point — one-sentence position on this turn's issue.
+2. Because — why you hold that view.
+3. Proof — anchor in the brief, your mandate, or a prior speaker.
+4. So what — implication for the session goal (meetingGoal).
+When reacting: engage another expert by title. One main point per message.`,
+      pyramid: `Use the Pyramid Principle / BLUF for the briefing:
+- headline = BLUF with at least one filled concrete element from debate (or explicit non-agreement).
+- keyTakeaways = supporting arguments.
+- thesis = recommend now / defer / what unlocks next.
+Ban qualifier-only headlines with empty slots.`
+    };
+
+    const inj = (t) => `<span class="inj">${t}</span>`;
+    const ph = (t) => `<span class="ph">${t}</span>`;
+
+    const PROMPTS = {
+      "entry-stream": {
+        title: "Board session (orchestration)",
+        file: "lib/board-runner.ts · POST /api/board/stream",
+        html: `Request: { "brief": string }
+
+runBoardSessionWithEvents(brief):
+  1. chairMeetingPlanPrompt (+ retry)
+  2. expertTurnPrompt × turnSchedule
+  3. chairBriefingPrompt (+ retry)
+  4. readerGuidePrompt
+  5. glossaryPrompt
+
+SSE events: meeting_plan → turn… → briefing → reader_guide → glossary`
+      },
+      "chair-meeting-plan": {
+        title: "chairMeetingPlanPrompt",
+        file: "lib/prompts.ts",
+        html: `Chair DESIGNs directed session: roster + turnSchedule + meetingGoal.
+
+${inj("BOARD_SESSION_PURPOSE")}
+
+Brief: ${ph("{{userBrief}}")}
+
+Rules: 3–6 experts, domain from brief, decidable meetingGoal, PREP+C in chairNotes.
+
+JSON: roles, turnSchedule, meetingGoal, chairNotesForFacilitator`
+      },
+      "chair-meeting-plan-retry": {
+        title: "chairMeetingPlanRetryPrompt",
+        file: "lib/prompts.ts",
+        html: `${inj("chairMeetingPlanPrompt")} + validation error → retry once.`
+      },
+      "expert-turn": {
+        title: "expertTurnPrompt",
+        file: "lib/prompts.ts",
+        html: `Expert: ${ph("{{expertTitle}}")} · Mandate: ${ph("{{mandate}}")} · Goal: ${ph("{{meetingGoal}}")}
+
+${inj("BOARD_AUDIENCE_INSTRUCTIONS")}
+${inj("BOARD_POINT_STRUCTURE")}
+
+Transcript: ${ph("{{transcriptLines}}")} · One message, 3–7 sentences.`
+      },
+      "chair-briefing": {
+        title: "chairBriefingPrompt",
+        file: "lib/prompts.ts",
+        html: `Chair synthesis memo (not transcript recap).
+
+${inj("BOARD_SESSION_PURPOSE")} ${inj("BOARD_AUDIENCE_INSTRUCTIONS")} ${inj("CHAIR_PYRAMID_RULES")}
+
+Brief + plan + transcript → JSON briefing (headline BLUF, takeaways, thesis, risks, experiments, next steps, open questions).`
+      },
+      "chair-briefing-retry": {
+        title: "chairBriefingRetryPrompt",
+        file: "lib/prompts.ts",
+        html: `${inj("chairBriefingPrompt")} + validation error → retry once.`
+      },
+      "reader-guide": {
+        title: "readerGuidePrompt",
+        file: "lib/reader-prompts.ts",
+        html: `Explain each turn + briefing section for non-experts. ${inj("BOARD_AUDIENCE_INSTRUCTIONS")}
+
+Bundle: ${ph("{{buildReaderBundle}}")} → JSON turnExplanations + briefingExplanations.`
+      },
+      "glossary": {
+        title: "glossaryPrompt",
+        file: "lib/glossary-prompts.ts",
+        html: `Extract jargon with exact match strings for UI highlight.
+
+Bundle: ${ph("{{buildGlossaryBundle}}")} → JSON entries (max 60).`
+      },
+      "explain": {
+        title: "onDemandExplainPrompt (v4-popover-ui)",
+        file: "lib/explain-prompts.ts",
+        html: `Explain selected text. Selection: ${ph("{{selection}}")} · Context: ${ph("{{snippets}}")}
+
+Plain prose ≤300 chars, 2 sentences, popover UI.`
+      },
+      "shared-session-purpose": { title: "BOARD_SESSION_PURPOSE", file: "lib/board-audience.ts", html: SHARED.sessionPurpose },
+      "shared-audience": { title: "BOARD_AUDIENCE_INSTRUCTIONS", file: "lib/board-audience.ts", html: SHARED.audience },
+      "shared-prep-c": { title: "BOARD_POINT_STRUCTURE (PREP+C)", file: "lib/board-audience.ts", html: SHARED.prepC },
+      "shared-pyramid": { title: "CHAIR_PYRAMID_RULES", file: "lib/board-audience.ts", html: SHARED.pyramid },
+      "l1-in": { title: "Submitter brief", file: "User input", html: `The user sends a free-text brief via POST /api/board/stream:\n\n{ "brief": "…" }\n\nMax length enforced in lib/board-constants (MAX_BRIEF_CHARS).` },
+      "l1-out": { title: "Session outputs", file: "SSE stream events", html: `Streamed to client:\n- meeting_plan (roles, schedule, meetingGoal)\n- turn × N (expert dialogue)\n- briefing (Chair JSON memo)\n- reader_guide (plain-language explanations)\n- glossary (term highlights)` },
+      "l1-side": { title: "On-demand explain path", file: "POST /api/explain", html: `Separate from board run. User selects text in UI → onDemandExplainPrompt → short popover explanation.` },
+    };
+
+    /** Mermaid node id substring → prompt key (longest match wins) */
+    const NODE_MAP = {
+      L3_PLAN_R: "chair-meeting-plan-retry",
+      L3_BRIEF_R: "chair-briefing-retry",
+      L3_PLAN: "chair-meeting-plan",
+      L3_BRIEF: "chair-briefing",
+      L3_EXPERT: "expert-turn",
+      L3_READER: "reader-guide",
+      L3_GLOSS: "glossary",
+      L3_EXPLAIN: "explain",
+      L3_S1: "shared-session-purpose",
+      L3_S2: "shared-audience",
+      L3_S3: "shared-prep-c",
+      L3_S4: "shared-pyramid",
+      L3_START: "entry-stream",
+      L3_FIN: "entry-stream",
+      L3_END: "entry-stream",
+      L2_PLAN: "chair-meeting-plan",
+      L2_BRIEF: "chair-briefing",
+      L2_EXPERT: "expert-turn",
+      L2_READER: "reader-guide",
+      L2_GLOSS: "glossary",
+      L2_START: "entry-stream",
+      L2_FIN: "entry-stream",
+      L2_END: "entry-stream",
+      L1_RUN: "entry-stream",
+      L1_IN: "l1-in",
+      L1_OUT: "l1-out",
+      L1_SIDE: "l1-side",
+    };
+
+    const DEFAULT_ZOOM = { 1: 1.1, 2: 1.05, 3: 0.9 };
+    const FIT_ZOOM = { 1: 1.1, 2: 1.0, 3: 0.75 };
+
+    let currentLevel = 1;
+    let zoom = 1.1;
+    const titleEl = document.getElementById("title");
+    const fileEl = document.getElementById("file");
+    const hintEl = document.getElementById("hint");
+    const emptyEl = document.getElementById("empty");
+    const promptEl = document.getElementById("prompt");
+    const zoomLabel = document.getElementById("zoom-label");
+
+    function showPrompt(key) {
+      const p = PROMPTS[key];
+      if (!p) return;
+      titleEl.textContent = p.title;
+      fileEl.textContent = p.file;
+      hintEl.textContent = "L" + currentLevel + " · yellow = placeholders · blue = injected blocks";
+      emptyEl.hidden = true;
+      promptEl.hidden = false;
+      promptEl.innerHTML = p.html;
+    }
+
+    function applyZoom() {
+      const scaler = document.querySelector(`[data-scaler="${currentLevel}"]`);
+      if (scaler) scaler.style.transform = `scale(${zoom})`;
+      zoomLabel.textContent = Math.round(zoom * 100) + "%";
+    }
+
+    const renderedLevels = new Set();
+
+    async function renderLevel(level) {
+      if (renderedLevels.has(level)) return;
+      const panel = document.querySelector(`[data-level-panel="${level}"]`);
+      const pre = document.getElementById(`chart-l${level}`);
+      const loading = document.getElementById(`loading-l${level}`);
+      const scaler = document.querySelector(`[data-scaler="${level}"]`);
+      if (!panel || !pre) return;
+
+      const needsOffscreen =
+        getComputedStyle(panel).display === "none" || panel.offsetParent === null;
+
+      const wasActive = panel.classList.contains("active");
+      if (needsOffscreen) {
+        panel.classList.add("active");
+        panel.style.display = "block";
+        panel.style.position = "fixed";
+        panel.style.left = "-10000px";
+        panel.style.top = "0";
+        panel.style.width = "900px";
+      }
+
+      try {
+        await mermaid.run({ nodes: [pre] });
+        renderedLevels.add(level);
+        if (loading) loading.hidden = true;
+        if (scaler) scaler.hidden = false;
+        bindNodesInPanel(panel);
+      } catch (err) {
+        if (loading) {
+          loading.className = "chart-error";
+          loading.textContent = "Failed to render: " + err.message;
+        }
+        console.error("Mermaid L" + level, err);
+        throw err;
+      } finally {
+        if (needsOffscreen) {
+          panel.style.position = "";
+          panel.style.left = "";
+          panel.style.top = "";
+          panel.style.width = "";
+          panel.style.display = "";
+          if (!wasActive) panel.classList.remove("active");
+        }
+      }
+    }
+
+    async function setLevel(level) {
+      currentLevel = level;
+      document.querySelectorAll(".level-panel").forEach(p => {
+        p.classList.toggle("active", p.dataset.levelPanel === String(level));
+      });
+      document.querySelectorAll(".level-tabs button").forEach(b => {
+        const on = b.dataset.level === String(level);
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-selected", on ? "true" : "false");
+      });
+
+      const loading = document.getElementById(`loading-l${level}`);
+      if (loading && !renderedLevels.has(level)) loading.hidden = false;
+
+      try {
+        await renderLevel(level);
+      } catch {
+        hintEl.textContent = "Level " + level + " failed to load — see error in chart area";
+        return;
+      }
+
+      zoom = DEFAULT_ZOOM[level];
+      applyZoom();
+      hintEl.textContent = "Level " + level + " · hover nodes · use +/− to zoom";
+    }
+
+    function bindNodesInPanel(panel) {
+      const svg = panel.querySelector("svg");
+      if (!svg || svg.dataset.bound) return;
+      svg.dataset.bound = "1";
+
+      const entries = Object.entries(NODE_MAP).sort((a, b) => b[0].length - a[0].length);
+      const bound = new Set();
+
+      for (const [id, promptKey] of entries) {
+        svg.querySelectorAll("g.node").forEach(node => {
+          if (bound.has(node)) return;
+          const nodeId = node.id || "";
+          if (!nodeId.includes(id)) return;
+          if (id === "L3_PLAN" && nodeId.includes("L3_PLAN_R")) return;
+          if (id === "L3_BRIEF" && nodeId.includes("L3_BRIEF_R")) return;
+          if (id === "L2_PLAN" && nodeId.includes("L2_PLAN")) { /* ok */ }
+
+          bound.add(node);
+          node.classList.add("prompt-node");
+          node.addEventListener("mouseenter", () => {
+            svg.querySelectorAll(".prompt-active").forEach(n => n.classList.remove("prompt-active"));
+            node.classList.add("prompt-active");
+            showPrompt(promptKey);
+          });
+        });
+      }
+    }
+
+    document.querySelectorAll(".level-tabs button").forEach(btn => {
+      btn.addEventListener("click", () => void setLevel(Number(btn.dataset.level)));
+    });
+
+    document.getElementById("zoom-in").onclick = () => { zoom = Math.min(2, zoom + 0.1); applyZoom(); };
+    document.getElementById("zoom-out").onclick = () => { zoom = Math.max(0.5, zoom - 0.1); applyZoom(); };
+    document.getElementById("zoom-fit").onclick = () => { zoom = FIT_ZOOM[currentLevel]; applyZoom(); };
+
+    document.addEventListener("keydown", (e) => {
+      if (e.target.matches("input, textarea")) return;
+      if (e.key === "1") void setLevel(1);
+      if (e.key === "2") void setLevel(2);
+      if (e.key === "3") void setLevel(3);
+    });
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: "loose",
+      theme: "base",
+      themeVariables: {
+        fontSize: "16px",
+        fontFamily: "Segoe UI, system-ui, sans-serif",
+        lineColor: "#64748b",
+        primaryTextColor: "#0f172a",
+      },
+      flowchart: {
+        htmlLabels: true,
+        curve: "basis",
+        padding: 20,
+        nodeSpacing: 55,
+        rankSpacing: 60,
+        wrappingWidth: 190,
+        diagramPadding: 16,
+      },
+    });
+
+    // Only L1 is visible on load — render it first; L2/L3 render when their tab opens
+    renderLevel(1).then(() => {
+      void setLevel(1);
+    }).catch(err => {
+      hintEl.textContent = "Mermaid error: " + err.message;
+      console.error(err);
+    });
+  </script>
+</body>
+</html>

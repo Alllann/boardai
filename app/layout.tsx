@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Board AI",
-  description: "Chair-led expert board and structured briefing",
+  description: "Goal-directed expert board deliberation and structured briefing",
 };
 
 export default function RootLayout({
