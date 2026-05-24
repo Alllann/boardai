@@ -9,13 +9,14 @@ import {
 } from "@/lib/session-store";
 
 export function useSessionList(): SessionSummary[] {
-  const [sessions, setSessions] = useState<SessionSummary[]>(listSessionSummaries);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
 
   const refresh = useCallback(() => {
     setSessions(listSessionSummaries());
   }, []);
 
   useEffect(() => {
+    refresh();
     window.addEventListener(SESSIONS_CHANGED_EVENT, refresh);
     return () => window.removeEventListener(SESSIONS_CHANGED_EVENT, refresh);
   }, [refresh]);

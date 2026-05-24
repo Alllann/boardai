@@ -25,16 +25,17 @@ type ShellContextValue = {
 const ShellContext = createContext<ShellContextValue | null>(null);
 
 export function ShellProvider({ children }: { children: ReactNode }) {
-  const [sidebarCollapsed, setSidebarCollapsedState] = useState(() => {
-    if (typeof window === "undefined") return false;
-    try {
-      return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1";
-    } catch {
-      return false;
-    }
-  });
+  const [sidebarCollapsed, setSidebarCollapsedState] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
+
+  useEffect(() => {
+    try {
+      setSidebarCollapsedState(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "1");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const setSidebarCollapsed = useCallback((v: boolean) => {
     setSidebarCollapsedState(v);

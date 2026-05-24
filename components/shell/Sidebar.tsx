@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { useSessionList } from "@/hooks/useSessionStore";
 import { groupSessionsByDate } from "@/lib/session-store";
@@ -20,6 +21,11 @@ export function Sidebar({ className = "", onNavigate }: Props) {
   const sessions = useSessionList();
   const { toggleSidebar } = useShell();
   const groups = groupSessionsByDate(sessions);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const activeId = pathname.startsWith("/c/") ? pathname.slice(3) : null;
 
@@ -69,7 +75,7 @@ export function Sidebar({ className = "", onNavigate }: Props) {
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
-        {groups.length === 0 ? (
+        {!mounted ? null : groups.length === 0 ? (
           <p className="px-2 py-4 text-xs text-[var(--text-secondary)]">No sessions yet</p>
         ) : (
           groups.map((group) => (
