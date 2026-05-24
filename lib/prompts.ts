@@ -18,9 +18,9 @@ ${userBrief}
 Rules:
 - Pick between ${MIN_ROLES} and ${MAX_ROLES} experts. Each expert has a unique machine id \`id\`: lowercase_snake_case (letters, digits, underscore), starting with a letter.
 - \`title\` is the expert's board seat / expert title — how you would introduce them. Use a recognizable role name, NOT a topic label (avoid "Unit economics", "Regulatory AI" as titles).
-- \`mandate\` is their detailed, non-overlapping scope for THIS brief (what they must stress-test). Put functional/topic detail in mandate, not in title. Mandates should steer experts to stress-test in language a non-specialist board member can follow.
+- \`mandate\` is their detailed, non-overlapping scope task based on their expertise. Put functional/topic detail in mandate, not in title. Mandates should steer experts to stress-test in language a non-specialist board member can follow.
 - Create \`turnSchedule\`: an ordered array of length between ${TARGET_TURNS_MIN} and ${TARGET_TURNS_MAX} (inclusive) of \`roleId\` strings. Repeat ids where a real meeting would bring someone back (objections, follow-ups). Order should create cross-talk and tension—not a rigid "everyone speaks once" go-around.
-- Include \`meetingGoal\`: one sentence on what this session must decide or stress-test.
+- Include \`meetingGoal\`: one sentence on what this session must decide or stress-test based on user brief. Do not create a goal that is not directly implied by user brief.
 - Optional \`chairNotesForFacilitator\`: short private notes for the facilitator. Include: require accessible language and visible reasoning chains (claim → because → implication); push for at least one sustained disagreement before the last third of turns.
 
 Output ONLY valid JSON (no markdown, no commentary) matching this shape:
@@ -70,15 +70,15 @@ Discussion so far:
 ${params.transcriptLines}
 ---
 
-Write ONE message (3 to 7 sentences). React to the most recent substantive points; you may disagree, qualify, or build on others. Reference others by name.
+Write ONE message (3 to 7 sentences). React to the most relevant points; you may disagree, qualify, or build on others. Reference others by shorterned name.
 
-How to structure your message (in flowing prose, not labeled bullets):
-- When relevant, anchor to the last speaker's point before stating your own.
+How to structure your message (in flowing prose, could involve labeled bullets if it helps make your point clearer):
+- When relevant, selectively anchor to one of the previous speakers' point before stating your own.
 - State your position clearly.
-- Include at least one explicit "because …" or "so that …" so listeners hear your reasoning chain.
+- Explicitly state your reasoning chain where it makes your position convincing and sensible.
 - Close with what your point implies for the decision the board is making.
 
-Do NOT speak for other roles or narrate the meeting meta. No bullet lists. Plain prose only.`;
+Do NOT speak for other roles or narrate the meeting meta.`;
 }
 
 export function chairBriefingPrompt(params: {
