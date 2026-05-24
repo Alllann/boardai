@@ -3,11 +3,8 @@ import { z } from "zod";
 import {
   GLOSSARY_MAX_ENTRIES,
   MAX_BRIEF_CHARS,
-  MAX_HEADLINE_CHARS,
   MAX_TAKEAWAY_CHARS,
   MAX_ON_DEMAND_EXPLAIN_CHARS,
-  MAX_READER_EXPLANATION_CHARS,
-  MAX_READER_THREAD_FRAMING_CHARS,
   MAX_ROLES,
   MAX_TURNS,
   MIN_ROLES,
@@ -52,10 +49,7 @@ export const meetingPlanSchema = z
 export type MeetingPlan = z.infer<typeof meetingPlanSchema>;
 
 export const briefingSchema = z.object({
-  headline: z
-    .string()
-    .min(1)
-    .transform((s) => clampText(MAX_HEADLINE_CHARS, s)),
+  headline: z.string().min(1),
   keyTakeaways: z
     .array(z.string().min(1).transform((s) => clampText(MAX_TAKEAWAY_CHARS, s)))
     .min(2)
@@ -101,16 +95,6 @@ export const glossarySchema = z.object({
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
 export type Glossary = z.infer<typeof glossarySchema>;
 
-const turnExplanationSchema = z.object({
-  turnId: z.number().int().positive(),
-  explanation: z
-    .string()
-    .min(1)
-    .transform((s) => clampText(MAX_READER_EXPLANATION_CHARS, s)),
-});
-
-export type TurnExplanation = z.infer<typeof turnExplanationSchema>;
-
 export const briefingSectionSchema = z.enum([
   "headline",
   "keyTakeaways",
@@ -123,30 +107,6 @@ export const briefingSectionSchema = z.enum([
 ]);
 
 export type BriefingSection = z.infer<typeof briefingSectionSchema>;
-
-const briefingExplanationSchema = z.object({
-  section: briefingSectionSchema,
-  /** Zero-based index for array sections (keyRisks, experiments, etc.). */
-  index: z.number().int().nonnegative().optional(),
-  explanation: z
-    .string()
-    .min(1)
-    .transform((s) => clampText(MAX_READER_EXPLANATION_CHARS, s)),
-});
-
-export type BriefingExplanation = z.infer<typeof briefingExplanationSchema>;
-
-export const readerGuideSchema = z.object({
-  turnExplanations: z.array(turnExplanationSchema),
-  briefingExplanations: z.array(briefingExplanationSchema).optional(),
-  threadFraming: z
-    .string()
-    .min(1)
-    .transform((s) => clampText(MAX_READER_THREAD_FRAMING_CHARS, s))
-    .optional(),
-});
-
-export type ReaderGuide = z.infer<typeof readerGuideSchema>;
 
 export const explainSourceSchema = z.enum(["transcript", "briefing"]);
 

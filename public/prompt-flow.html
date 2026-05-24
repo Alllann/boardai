@@ -187,7 +187,7 @@
 flowchart LR
   L1_IN(["Submitter brief"])
   L1_RUN["Board session<br/>POST /api/board/stream"]
-  L1_OUT(["Briefing · reader · glossary"])
+  L1_OUT(["Briefing · glossary"])
   L1_SIDE["On-demand explain<br/>POST /api/explain"]
 
   L1_IN --> L1_RUN --> L1_OUT
@@ -222,11 +222,10 @@ flowchart LR
   L2_FIN["finalizeMeetingPlan"]
   L2_EXPERT["expertTurnPrompt<br/>loop x10-12"]
   L2_BRIEF["chairBriefingPrompt"]
-  L2_READER["readerGuidePrompt"]
   L2_GLOSS["glossaryPrompt"]
   L2_END(["End"])
 
-  L2_START --> L2_PLAN --> L2_FIN --> L2_EXPERT --> L2_BRIEF --> L2_READER --> L2_GLOSS --> L2_END
+  L2_START --> L2_PLAN --> L2_FIN --> L2_EXPERT --> L2_BRIEF --> L2_GLOSS --> L2_END
 
   classDef chair fill:#fff7ed,stroke:#ea580c,stroke-width:2.5px,color:#7c2d12
   classDef expert fill:#eff6ff,stroke:#2563eb,stroke-width:2.5px,color:#1e3a8a
@@ -235,7 +234,7 @@ flowchart LR
 
   class L2_PLAN,L2_BRIEF chair
   class L2_EXPERT expert
-  class L2_READER,L2_GLOSS post
+  class L2_GLOSS post
   class L2_START,L2_FIN,L2_END sys
               </pre>
             </div>
@@ -261,7 +260,6 @@ flowchart TB
     L3_EXPERT["expertTurnPrompt"]
     L3_BRIEF["chairBriefingPrompt"]
     L3_BRIEF_R["chairBriefingRetryPrompt"]
-    L3_READER["readerGuidePrompt"]
     L3_GLOSS["glossaryPrompt"]
     L3_END(["End"])
 
@@ -271,7 +269,7 @@ flowchart TB
     L3_EXPERT -->|next turn| L3_EXPERT
     L3_EXPERT -->|done| L3_BRIEF
     L3_BRIEF -->|invalid| L3_BRIEF_R --> L3_BRIEF
-    L3_BRIEF -->|valid| L3_READER --> L3_GLOSS --> L3_END
+    L3_BRIEF -->|valid| L3_GLOSS --> L3_END
   end
 
   subgraph L3_SHARED["Shared - board-audience.ts"]
@@ -290,7 +288,6 @@ flowchart TB
   L3_S1 -.-> L3_BRIEF
   L3_S2 -.-> L3_EXPERT
   L3_S2 -.-> L3_BRIEF
-  L3_S2 -.-> L3_READER
   L3_S3 -.-> L3_EXPERT
   L3_S4 -.-> L3_BRIEF
 
@@ -303,7 +300,7 @@ flowchart TB
 
   class L3_PLAN,L3_PLAN_R,L3_BRIEF,L3_BRIEF_R chair
   class L3_EXPERT expert
-  class L3_READER,L3_GLOSS post
+  class L3_GLOSS post
   class L3_START,L3_FIN,L3_END sys
   class L3_S1,L3_S2,L3_S3,L3_S4 shared
   class L3_EXPLAIN od
@@ -363,10 +360,9 @@ runBoardSessionWithEvents(brief):
   1. chairMeetingPlanPrompt (+ retry)
   2. expertTurnPrompt × turnSchedule
   3. chairBriefingPrompt (+ retry)
-  4. readerGuidePrompt
-  5. glossaryPrompt
+  4. glossaryPrompt
 
-SSE events: meeting_plan → turn… → briefing → reader_guide → glossary`
+SSE events: meeting_plan → turn… → briefing → glossary`
       },
       "chair-meeting-plan": {
         title: "chairMeetingPlanPrompt",
@@ -410,13 +406,6 @@ Brief + plan + transcript → JSON briefing (headline BLUF, takeaways, thesis, r
         file: "lib/prompts.ts",
         html: `${inj("chairBriefingPrompt")} + validation error → retry once.`
       },
-      "reader-guide": {
-        title: "readerGuidePrompt",
-        file: "lib/reader-prompts.ts",
-        html: `Explain each turn + briefing section for non-experts. ${inj("BOARD_AUDIENCE_INSTRUCTIONS")}
-
-Bundle: ${ph("{{buildReaderBundle}}")} → JSON turnExplanations + briefingExplanations.`
-      },
       "glossary": {
         title: "glossaryPrompt",
         file: "lib/glossary-prompts.ts",
@@ -436,7 +425,7 @@ Plain prose ≤300 chars, 2 sentences, popover UI.`
       "shared-prep-c": { title: "BOARD_POINT_STRUCTURE (PREP+C)", file: "lib/board-audience.ts", html: SHARED.prepC },
       "shared-pyramid": { title: "CHAIR_PYRAMID_RULES", file: "lib/board-audience.ts", html: SHARED.pyramid },
       "l1-in": { title: "Submitter brief", file: "User input", html: `The user sends a free-text brief via POST /api/board/stream:\n\n{ "brief": "…" }\n\nMax length enforced in lib/board-constants (MAX_BRIEF_CHARS).` },
-      "l1-out": { title: "Session outputs", file: "SSE stream events", html: `Streamed to client:\n- meeting_plan (roles, schedule, meetingGoal)\n- turn × N (expert dialogue)\n- briefing (Chair JSON memo)\n- reader_guide (plain-language explanations)\n- glossary (term highlights)` },
+      "l1-out": { title: "Session outputs", file: "SSE stream events", html: `Streamed to client:\n- meeting_plan (roles, schedule, meetingGoal)\n- turn × N (expert dialogue)\n- briefing (Chair JSON memo)\n- glossary (term highlights)` },
       "l1-side": { title: "On-demand explain path", file: "POST /api/explain", html: `Separate from board run. User selects text in UI → onDemandExplainPrompt → short popover explanation.` },
     };
 
@@ -447,7 +436,6 @@ Plain prose ≤300 chars, 2 sentences, popover UI.`
       L3_PLAN: "chair-meeting-plan",
       L3_BRIEF: "chair-briefing",
       L3_EXPERT: "expert-turn",
-      L3_READER: "reader-guide",
       L3_GLOSS: "glossary",
       L3_EXPLAIN: "explain",
       L3_S1: "shared-session-purpose",
@@ -460,7 +448,6 @@ Plain prose ≤300 chars, 2 sentences, popover UI.`
       L2_PLAN: "chair-meeting-plan",
       L2_BRIEF: "chair-briefing",
       L2_EXPERT: "expert-turn",
-      L2_READER: "reader-guide",
       L2_GLOSS: "glossary",
       L2_START: "entry-stream",
       L2_FIN: "entry-stream",

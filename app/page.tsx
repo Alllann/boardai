@@ -370,7 +370,7 @@ export default function Home() {
       ) : (
         <div className="flex flex-1 flex-col items-center justify-center px-6 py-12 text-center">
           <p className="max-w-sm text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
-            Send what you want the board to help with — a decision, plan, or question in any domain. The Chair will invite experts,
+            Send your business idea or decision below. The Chair will invite experts,
             run the discussion, and share a briefing — like a group chat.
           </p>
         </div>

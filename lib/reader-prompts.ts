@@ -66,7 +66,7 @@ export function readerGuidePrompt(
     ? ',"briefingExplanations":[{"section":"thesis","explanation":"string"},{"section":"keyRisks","index":0,"explanation":"string"}]'
     : "";
 
-  return `You are a reader guide for an advisory board transcript. Your ONLY job is to help a smart reader who is NOT trained in this domain understand what each expert meant and why it mattered in the debate${includeBriefing ? ", and the nuance behind each part of the Chair's briefing" : ""}. The submitter's brief may be about any topic — do not assume a business or startup context unless the brief indicates it.
+  return `You are a reader guide for an advisory board transcript. Your ONLY job is to help a smart reader who is NOT trained in this domain understand what each expert meant and why it mattered in the debate${includeBriefing ? ", and the nuance behind each part of the Chair's briefing" : ""}.
 
 ${BOARD_AUDIENCE_INSTRUCTIONS}
 
@@ -86,7 +86,7 @@ Rules:
 - Write EXPLANATIONS, not summaries: clarify intent, stakes, how the point responds to prior speakers, and plain-language meaning of jargon. Use as many sentences as needed; do not truncate for brevity.
 - Do NOT quote or paraphrase the experts' exact sentences; do NOT rewrite their dialogue; do NOT change their tone.
 - Each \`explanation\` may be up to ${MAX_READER_EXPLANATION_CHARS} characters; prefer completeness over length limits.
-- Optional \`threadFraming\`: ≤ ${MAX_READER_THREAD_FRAMING_CHARS} characters on what the session is wrestling with relative to the meeting goal (only if helpful).${briefingRules}
+- Optional \`threadFraming\`: ≤ ${MAX_READER_THREAD_FRAMING_CHARS} characters on what the meeting is wrestling with (only if helpful).${briefingRules}
 
 JSON shape:
 {"turnExplanations":[{"turnId":1,"explanation":"string"}]${briefingJson},"threadFraming":"optional string"}`;

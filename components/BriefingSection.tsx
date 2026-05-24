@@ -1,6 +1,5 @@
 "use client";
 
-import { PlainLanguageBlock } from "@/components/PlainLanguageBlock";
 import {
   SelectableExplain,
   type ExplainContextParams,
@@ -13,8 +12,6 @@ type Props = {
   section: BriefingSectionId;
   sectionIndex?: number;
   glossaryEntries: GlossaryEntry[];
-  explanation?: string;
-  showExplanationToggle: boolean;
   explainContext: ExplainContextParams;
   explainDisabled: boolean;
   asListItem?: boolean;
@@ -27,8 +24,6 @@ export function BriefingSection({
   section,
   sectionIndex,
   glossaryEntries,
-  explanation,
-  showExplanationToggle,
   explainContext,
   explainDisabled,
   asListItem = false,
@@ -49,14 +44,7 @@ export function BriefingSection({
       blockText={text}
       showBlockExplain
       disabled={explainDisabled}
-    >
-      {explanation ? (
-        <PlainLanguageBlock
-          explanation={explanation}
-          showToggle={showExplanationToggle}
-        />
-      ) : null}
-    </SelectableExplain>
+    />
   );
 
   if (asListItem) {

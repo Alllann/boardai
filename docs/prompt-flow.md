@@ -1,6 +1,6 @@
 # Board AI — Prompt Flow
 
-Board AI runs a **directed deliberation session** for any submitter brief. One HTTP request (`POST /api/board/stream`) triggers a fixed pipeline of LLM prompts: the Chair designs the session, experts debate in turn, the Chair synthesizes a briefing, then post-processing adds a reader guide and glossary. A separate on-demand path explains selected text in the UI.
+Board AI runs a **directed deliberation session** for any submitter brief. One HTTP request (`POST /api/board/stream`) triggers a fixed pipeline of LLM prompts: the Chair designs the session, experts debate in turn, the Chair synthesizes a briefing, then a glossary is built for inline highlighting. A separate on-demand path explains selected text in the UI.
 
 **Two argument frameworks:**
 
@@ -19,7 +19,7 @@ Shared rules live in `lib/board-audience.ts` and are injected into multiple prom
 flowchart LR
   IN(["Submitter brief"])
   RUN["Board session<br/>POST /api/board/stream"]
-  OUT(["Briefing · reader · glossary"])
+  OUT(["Briefing · glossary"])
   SIDE["On-demand explain<br/>POST /api/explain"]
 
   IN --> RUN --> OUT
@@ -28,9 +28,9 @@ flowchart LR
 
 **Input:** free-text brief from the user.
 
-**Core run:** orchestrated in `lib/board-runner.ts` — plan → expert turns → briefing → reader guide → glossary. Events stream over SSE.
+**Core run:** orchestrated in `lib/board-runner.ts` — plan → expert turns → briefing → glossary. Events stream over SSE.
 
-**Outputs:** Chair briefing JSON, per-turn reader explanations, glossary entries for UI highlighting.
+**Outputs:** Chair briefing JSON, glossary entries for UI highlighting.
 
 **Side path:** user selects text in the UI → `onDemandExplainPrompt` → short popover copy (not part of the main stream).
 
@@ -47,11 +47,10 @@ flowchart LR
   FIN["finalizeMeetingPlan"]
   EXPERT["expertTurnPrompt<br/>loop x10-12"]
   BRIEF["chairBriefingPrompt"]
-  READER["readerGuidePrompt"]
   GLOSS["glossaryPrompt"]
   END(["End"])
 
-  START --> PLAN --> FIN --> EXPERT --> BRIEF --> READER --> GLOSS --> END
+  START --> PLAN --> FIN --> EXPERT --> BRIEF --> GLOSS --> END
 ```
 
 | Step | Prompt | Output |
@@ -60,8 +59,7 @@ flowchart LR
 | 2 | `finalizeMeetingPlan` | Validated plan (code, not LLM) |
 | 3 | `expertTurnPrompt` | One expert message per scheduled turn |
 | 4 | `chairBriefingPrompt` | JSON synthesis memo for submitter |
-| 5 | `readerGuidePrompt` | JSON explanations for non-expert readers |
-| 6 | `glossaryPrompt` | JSON term list with exact `match` strings |
+| 5 | `glossaryPrompt` | JSON term list with exact `match` strings |
 
 ---
 
@@ -80,7 +78,6 @@ flowchart TB
     EXPERT["expertTurnPrompt"]
     BRIEF["chairBriefingPrompt"]
     BRIEF_R["chairBriefingRetryPrompt"]
-    READER["readerGuidePrompt"]
     GLOSS["glossaryPrompt"]
     END(["End"])
 
@@ -90,7 +87,7 @@ flowchart TB
     EXPERT -->|next turn| EXPERT
     EXPERT -->|done| BRIEF
     BRIEF -->|invalid| BRIEF_R --> BRIEF
-    BRIEF -->|valid| READER --> GLOSS --> END
+    BRIEF -->|valid| GLOSS --> END
   end
 
   subgraph SHARED["Shared — lib/board-audience.ts"]
@@ -109,7 +106,6 @@ flowchart TB
   S1 -.-> BRIEF
   S2 -.-> EXPERT
   S2 -.-> BRIEF
-  S2 -.-> READER
   S3 -.-> EXPERT
   S4 -.-> BRIEF
 ```
@@ -125,7 +121,7 @@ flowchart TB
 ## SSE event order
 
 ```
-meeting_plan → turn (×N) → briefing → reader_guide → glossary
+meeting_plan → turn (×N) → briefing → glossary
 ```
 
 ---
@@ -193,10 +189,9 @@ runBoardSessionWithEvents(brief):
   1. chairMeetingPlanPrompt (+ retry on invalid JSON)
   2. expertTurnPrompt × len(turnSchedule)
   3. chairBriefingPrompt (+ retry on invalid JSON)
-  4. readerGuidePrompt
-  5. glossaryPrompt
+  4. glossaryPrompt
 
-SSE events: meeting_plan → turn… → briefing → reader_guide → glossary
+SSE events: meeting_plan → turn… → briefing → glossary
 ```
 
 ---
@@ -320,38 +315,6 @@ Return corrected JSON ONLY.
 
 ---
 
-## readerGuidePrompt (`lib/reader-prompts.ts`)
-
-```
-You are a reader guide for an advisory board transcript. Your ONLY job is to help a smart reader who is NOT trained in this domain understand what each expert meant and why it mattered in the debate, and the nuance behind each part of the Chair's briefing.
-
-[injected: BOARD_AUDIENCE_INSTRUCTIONS]
-
-Audience hint from the user's brief (use only to calibrate depth):
----
-{{userBrief (truncated to 1500 chars)}}
----
-
-Material to explain (read-only):
----
-{{buildReaderBundle output: brief + plan + transcript + briefing sections}}
----
-
-Rules:
-- Output ONLY valid JSON, no markdown fences.
-- For EVERY transcript turn ([turnId=N]), add one entry in `turnExplanations`.
-- Write EXPLANATIONS, not summaries …
-- Do NOT quote or paraphrase the experts' exact sentences …
-- For EVERY Chair briefing [section=…] block, add one `briefingExplanations` entry.
-
-JSON shape:
-{"turnExplanations":[{"turnId":1,"explanation":"string"}],
- "briefingExplanations":[{"section":"thesis","explanation":"string"}, …],
- "threadFraming":"optional string"}
-```
-
----
-
 ## glossaryPrompt (`lib/glossary-prompts.ts`)
 
 ```
@@ -418,6 +381,6 @@ Rules:
 
 **Submitter brief** — `POST /api/board/stream` body `{ "brief": "…" }`. Max length in `lib/board-constants.ts`.
 
-**Session outputs** — SSE stream: `meeting_plan`, `turn` × N, `briefing`, `reader_guide`, `glossary`.
+**Session outputs** — SSE stream: `meeting_plan`, `turn` × N, `briefing`, `glossary`.
 
 **On-demand explain** — `POST /api/explain` with selection + context; separate from the board run.

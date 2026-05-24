@@ -15,11 +15,6 @@ export const ROLE_ID_REGEX = /^[a-z][a-z0-9_]{1,39}$/;
 /** Max glossary terms surfaced in the UI (model may overshoot; we clamp). */
 export const GLOSSARY_MAX_ENTRIES = 60;
 
-/** Safety cap for per-turn reader explanations (model may overshoot; we clamp). */
-export const MAX_READER_EXPLANATION_CHARS = 8_000;
-export const MAX_READER_THREAD_FRAMING_CHARS = 600;
-/** Chair briefing headline (model may overshoot; we clamp). */
-export const MAX_HEADLINE_CHARS = 200;
 /** Chair briefing key takeaway bullet (model may overshoot; we clamp). */
 export const MAX_TAKEAWAY_CHARS = 280;
 

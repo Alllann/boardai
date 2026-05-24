@@ -43,7 +43,6 @@ export async function POST(req: Request) {
       meetingPlan: result.meetingPlan,
       transcript: result.transcript,
       briefing: result.briefing,
-      readerGuide: result.readerGuide,
       glossary: result.glossary,
     });
   } catch (e) {

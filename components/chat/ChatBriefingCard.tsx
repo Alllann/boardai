@@ -7,8 +7,6 @@ import type { ChairBriefing, GlossaryEntry } from "@/lib/schemas";
 type Props = {
   briefing: ChairBriefing;
   glossaryEntries: GlossaryEntry[];
-  briefingExplanationByKey: Map<string, string>;
-  showExplanationToggle: boolean;
   explainContext: ExplainContextParams;
   explainDisabled: boolean;
 };
@@ -16,8 +14,6 @@ type Props = {
 export function ChatBriefingCard({
   briefing,
   glossaryEntries,
-  briefingExplanationByKey,
-  showExplanationToggle,
   explainContext,
   explainDisabled,
 }: Props) {
@@ -44,8 +40,6 @@ export function ChatBriefingCard({
               text={briefing.headline}
               section="headline"
               glossaryEntries={glossaryEntries}
-              explanation={briefingExplanationByKey.get("headline")}
-              showExplanationToggle={showExplanationToggle}
               explainContext={explainContext}
               explainDisabled={explainDisabled}
             />
@@ -64,8 +58,6 @@ export function ChatBriefingCard({
                   section="keyTakeaways"
                   sectionIndex={i}
                   glossaryEntries={glossaryEntries}
-                  explanation={briefingExplanationByKey.get(`keyTakeaways:${i}`)}
-                  showExplanationToggle={showExplanationToggle}
                   explainContext={explainContext}
                   explainDisabled={explainDisabled}
                   asListItem
@@ -79,18 +71,16 @@ export function ChatBriefingCard({
             text={briefing.thesis}
             section="thesis"
             glossaryEntries={glossaryEntries}
-            explanation={briefingExplanationByKey.get("thesis")}
-            showExplanationToggle={showExplanationToggle}
             explainContext={explainContext}
             explainDisabled={explainDisabled}
           />
 
           <div className="space-y-3 border-t border-amber-100 pt-3 dark:border-amber-900/40">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Concerns & validation
+              Risks & validation
             </p>
             <div className="space-y-2">
-              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Key concerns</p>
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">Key risks</p>
               <ul className="list-outside list-disc space-y-2 pl-4">
                 {briefing.keyRisks.map((x, i) => (
                   <BriefingSection
@@ -100,8 +90,6 @@ export function ChatBriefingCard({
                     section="keyRisks"
                     sectionIndex={i}
                     glossaryEntries={glossaryEntries}
-                    explanation={briefingExplanationByKey.get(`keyRisks:${i}`)}
-                    showExplanationToggle={showExplanationToggle}
                     explainContext={explainContext}
                     explainDisabled={explainDisabled}
                     asListItem
@@ -120,8 +108,6 @@ export function ChatBriefingCard({
                     section="experiments"
                     sectionIndex={i}
                     glossaryEntries={glossaryEntries}
-                    explanation={briefingExplanationByKey.get(`experiments:${i}`)}
-                    showExplanationToggle={showExplanationToggle}
                     explainContext={explainContext}
                     explainDisabled={explainDisabled}
                     asListItem
@@ -133,7 +119,7 @@ export function ChatBriefingCard({
 
           <div className="space-y-2 border-t border-amber-100 pt-3 dark:border-amber-900/40">
             <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Next steps
+              Next steps (7 days)
             </p>
             <ol className="list-outside list-decimal space-y-2 pl-4">
               {briefing.sevenDayPlan.map((x, i) => (
@@ -144,8 +130,6 @@ export function ChatBriefingCard({
                   section="sevenDayPlan"
                   sectionIndex={i}
                   glossaryEntries={glossaryEntries}
-                  explanation={briefingExplanationByKey.get(`sevenDayPlan:${i}`)}
-                  showExplanationToggle={showExplanationToggle}
                   explainContext={explainContext}
                   explainDisabled={explainDisabled}
                   asListItem
@@ -168,8 +152,6 @@ export function ChatBriefingCard({
                     section="openQuestions"
                     sectionIndex={i}
                     glossaryEntries={glossaryEntries}
-                    explanation={briefingExplanationByKey.get(`openQuestions:${i}`)}
-                    showExplanationToggle={showExplanationToggle}
                     explainContext={explainContext}
                     explainDisabled={explainDisabled}
                     asListItem
@@ -185,8 +167,6 @@ export function ChatBriefingCard({
               text={briefing.dissentOrUnresolved}
               section="dissentOrUnresolved"
               glossaryEntries={glossaryEntries}
-              explanation={briefingExplanationByKey.get("dissentOrUnresolved")}
-              showExplanationToggle={showExplanationToggle}
               explainContext={explainContext}
               explainDisabled={explainDisabled}
               titleTone="warning"

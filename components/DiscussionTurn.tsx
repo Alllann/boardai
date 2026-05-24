@@ -1,7 +1,6 @@
 "use client";
 
 import { GlossaryText } from "@/components/GlossaryText";
-import { PlainLanguageBlock } from "@/components/PlainLanguageBlock";
 import { RoleBadge } from "@/components/RoleBadge";
 import {
   SelectableExplain,
@@ -14,8 +13,6 @@ type Props = {
   turn: TranscriptTurn;
   role: MeetingPlan["roles"][number] | undefined;
   glossaryEntries: GlossaryEntry[];
-  explanation?: string;
-  showExplanationToggle: boolean;
   explainContext?: ExplainContextParams;
   explainDisabled?: boolean;
 };
@@ -24,8 +21,6 @@ export function DiscussionTurn({
   turn,
   role,
   glossaryEntries,
-  explanation,
-  showExplanationToggle,
   explainContext,
   explainDisabled = false,
 }: Props) {
@@ -59,26 +54,11 @@ export function DiscussionTurn({
             showBlockExplain
             disabled={explainDisabled}
             className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
-          >
-            {explanation ? (
-              <PlainLanguageBlock
-                explanation={explanation}
-                showToggle={showExplanationToggle}
-              />
-            ) : null}
-          </SelectableExplain>
+          />
         ) : (
-          <>
-            <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-              <GlossaryText text={turn.content} entries={glossaryEntries} />
-            </div>
-            {explanation ? (
-              <PlainLanguageBlock
-                explanation={explanation}
-                showToggle={showExplanationToggle}
-              />
-            ) : null}
-          </>
+          <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+            <GlossaryText text={turn.content} entries={glossaryEntries} />
+          </div>
         )}
       </div>
     </li>
