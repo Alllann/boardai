@@ -1,11 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ChatBriefingCard } from "@/components/chat/ChatBriefingCard";
+import { ChatChairMessage } from "@/components/chat/ChatChairMessage";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatExpertsInvite } from "@/components/chat/ChatExpertsInvite";
 import { ChatGlossaryMessage } from "@/components/chat/ChatGlossaryMessage";
+import { ChatProposalCard } from "@/components/chat/ChatProposalCard";
 import { ChatSystemBubble } from "@/components/chat/ChatSystemBubble";
 import { ChatUserBubble } from "@/components/chat/ChatUserBubble";
 import { DiscussionTurn } from "@/components/DiscussionTurn";
@@ -18,18 +20,26 @@ import {
   buildMeetingGoal,
   buildTranscriptSnippet,
 } from "@/lib/explain-context";
-import { loadSession } from "@/lib/session-store";
+import { getMentionCandidates, loadSession } from "@/lib/session-store";
+import type { ThreadItem } from "@/lib/schemas";
 
 type Props = {
   sessionId: string;
 };
 
 export function BoardChatView({ sessionId }: Props) {
-  const { state } = useBoardStream(sessionId);
+  const {
+    state,
+    approveProposal,
+    sendProposalReply,
+    sendFollowUp,
+  } = useBoardStream(sessionId);
   const { setMobileSidebarOpen, focusMode, setFocusMode } = useShell();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLTextAreaElement>(null);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
+  const [composerValue, setComposerValue] = useState("");
 
   const SCROLL_BOTTOM_THRESHOLD = 80;
 
@@ -54,6 +64,14 @@ export function BoardChatView({ sessionId }: Props) {
   const loading = state?.loading ?? false;
   const error = state?.error ?? null;
   const brief = state?.brief ?? "";
+  const timeline = state?.timeline ?? [];
+  const thread = state?.thread ?? [];
+  const pendingProposal = state?.pendingProposal ?? null;
+  const status = state?.status ?? "idle";
+  const mentionCandidates = useMemo(
+    () => (session ? getMentionCandidates(session) : []),
+    [session],
+  );
 
   const roleById = useMemo(() => {
     const map = new Map<string, NonNullable<typeof meetingPlan>["roles"][number]>();
@@ -83,7 +101,11 @@ export function BoardChatView({ sessionId }: Props) {
     el.addEventListener("scroll", checkScrollPosition, { passive: true });
     checkScrollPosition();
     return () => el.removeEventListener("scroll", checkScrollPosition);
-  }, [checkScrollPosition, turns.length, meetingPlan, briefing, glossary, loading]);
+  }, [checkScrollPosition, turns.length, meetingPlan, briefing, glossary, loading, thread.length]);
+
+  useEffect(() => {
+    jumpToBottom();
+  }, [turns.length, thread.length, loading, jumpToBottom]);
 
   const copyText = async (label: string, text: string) => {
     try {
@@ -97,6 +119,7 @@ export function BoardChatView({ sessionId }: Props) {
 
   const statusMessage = (() => {
     if (!loading) return null;
+    if (pendingProposal) return null;
     if (!meetingPlan) return "Chair is convening the board…";
     if (turns.length === 0) return "Inviting experts to the group…";
     if (!briefing) {
@@ -108,6 +131,26 @@ export function BoardChatView({ sessionId }: Props) {
     if (!glossary) return "Building glossary…";
     return null;
   })();
+
+  const composerEnabled =
+    !loading &&
+    (status === "awaiting_user" ||
+      (status === "idle" && !!meetingPlan && !!glossary));
+
+  const handleComposerSubmit = () => {
+    const msg = composerValue.trim();
+    if (!msg || loading) return;
+    if (status === "awaiting_user" && pendingProposal) {
+      void sendProposalReply(msg);
+    } else if (status === "idle") {
+      void sendFollowUp(msg);
+    }
+    setComposerValue("");
+  };
+
+  const handleSuggestChanges = () => {
+    composerRef.current?.focus();
+  };
 
   const headerActions = (
     <>
@@ -139,6 +182,223 @@ export function BoardChatView({ sessionId }: Props) {
     </>
   );
 
+  const threadItemKey = (item: ThreadItem, index: number): string => {
+    switch (item.kind) {
+      case "user":
+      case "chair":
+      case "status":
+        return `${item.kind}-${item.id}`;
+      case "expert":
+        return `expert-${item.id}`;
+      case "proposal":
+        return `proposal-${item.payload.id}-${item.status}`;
+      case "briefing":
+        return `briefing-${item.roundId}-${index}`;
+      default:
+        return `thread-${index}`;
+    }
+  };
+
+  const renderThreadItem = (item: ThreadItem, index: number) => {
+    const key = threadItemKey(item, index);
+
+    if (item.kind === "user") {
+      if (item.id === "initial-brief" || (index === 0 && item.content === brief)) {
+        return (
+          <ChatUserBubble
+            key={key}
+            text={item.content}
+            mentionCandidates={mentionCandidates}
+          />
+        );
+      }
+      return (
+        <ChatUserBubble
+          key={key}
+          text={item.content}
+          mentionCandidates={mentionCandidates}
+        />
+      );
+    }
+
+    if (item.kind === "status") {
+      return (
+        <ChatSystemBubble key={key} variant="status">
+          {item.message}
+        </ChatSystemBubble>
+      );
+    }
+
+    if (item.kind === "proposal" && item.status === "pending" && pendingProposal) {
+      return (
+        <ChatProposalCard
+          key={key}
+          proposal={pendingProposal}
+          onApprove={() => void approveProposal()}
+          onSuggestChanges={handleSuggestChanges}
+          loading={loading}
+        />
+      );
+    }
+
+    if (item.kind === "expert") {
+      return (
+        <DiscussionTurn
+          key={key}
+          turn={item}
+          role={roleById.get(item.roleId)}
+          glossaryEntries={glossaryEntries}
+          explainContext={
+            baseExplainContext
+              ? {
+                  ...baseExplainContext,
+                  transcriptSnippet: buildTranscriptSnippet(turns, item.id),
+                }
+              : undefined
+          }
+          explainDisabled={explainDisabled}
+        />
+      );
+    }
+
+    if (item.kind === "chair") {
+      return <ChatChairMessage key={key} content={item.content} />;
+    }
+
+    if (item.kind === "briefing" && baseExplainContext) {
+      return (
+        <ChatBriefingCard
+          key={key}
+          briefing={item.payload}
+          glossaryEntries={glossaryEntries}
+          explainContext={baseExplainContext}
+          explainDisabled={explainDisabled}
+        />
+      );
+    }
+
+    return null;
+  };
+
+  const renderLegacyTimeline = () => {
+    const items: ReactNode[] = [];
+    if (brief) {
+      items.push(
+        <ChatUserBubble
+          key="brief"
+          text={brief}
+          mentionCandidates={mentionCandidates}
+        />,
+      );
+    }
+
+    const preTurnEvents = timeline.filter((e) => e.afterTurnCount === 0);
+    for (const ev of preTurnEvents) {
+      items.push(
+        <ChatSystemBubble key={ev.id} variant="status">
+          {ev.message}
+        </ChatSystemBubble>,
+      );
+    }
+
+    if (pendingProposal && status === "awaiting_user") {
+      items.push(
+        <ChatProposalCard
+          key="proposal"
+          proposal={pendingProposal}
+          onApprove={() => void approveProposal()}
+          onSuggestChanges={handleSuggestChanges}
+          loading={loading}
+        />,
+      );
+    }
+
+    if (meetingPlan) {
+      items.push(<ChatExpertsInvite key="invite" plan={meetingPlan} />);
+    }
+
+    turns.forEach((t, i) => {
+      const turnEvents = timeline.filter((e) => e.afterTurnCount === i + 1);
+      for (const ev of turnEvents) {
+        items.push(
+          <ChatSystemBubble key={ev.id} variant="status">
+            {ev.message}
+          </ChatSystemBubble>,
+        );
+      }
+      items.push(
+        <DiscussionTurn
+          key={t.id}
+          turn={t}
+          role={roleById.get(t.roleId)}
+          glossaryEntries={glossaryEntries}
+          explainContext={
+            baseExplainContext
+              ? {
+                  ...baseExplainContext,
+                  transcriptSnippet: buildTranscriptSnippet(turns, t.id),
+                }
+              : undefined
+          }
+          explainDisabled={explainDisabled}
+        />,
+      );
+    });
+
+    const postTurnEvents = timeline.filter((e) => e.afterTurnCount === turns.length);
+    for (const ev of postTurnEvents) {
+      if (
+        !items.some(
+          (_, idx) =>
+            idx > 0 &&
+            ev.message.startsWith("Discussion") &&
+            timeline.filter((x) => x.message.startsWith("Discussion")).length > 1,
+        )
+      ) {
+        items.push(
+          <ChatSystemBubble key={`post-${ev.id}`} variant="status">
+            {ev.message}
+          </ChatSystemBubble>,
+        );
+      }
+    }
+
+    if (briefing && baseExplainContext) {
+      items.push(
+        <ChatBriefingCard
+          key="briefing"
+          briefing={briefing}
+          glossaryEntries={glossaryEntries}
+          explainContext={baseExplainContext}
+          explainDisabled={explainDisabled}
+        />,
+      );
+    }
+
+    return items;
+  };
+
+  const renderThreadTimeline = () => {
+    const items: ReactNode[] = [];
+    let inviteShown = false;
+
+    for (let index = 0; index < thread.length; index++) {
+      const item = thread[index]!;
+      if (!inviteShown && item.kind === "expert" && meetingPlan) {
+        items.push(<ChatExpertsInvite key="invite" plan={meetingPlan} />);
+        inviteShown = true;
+      }
+      const node = renderThreadItem(item, index);
+      if (node) items.push(node);
+    }
+
+    if (!inviteShown && meetingPlan && turns.length > 0) {
+      items.unshift(<ChatExpertsInvite key="invite" plan={meetingPlan} />);
+    }
+
+    return items;
+  };
+
   if (!state) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-[var(--text-secondary)]">
@@ -146,6 +406,9 @@ export function BoardChatView({ sessionId }: Props) {
       </div>
     );
   }
+
+  const useThread = thread.length > 0;
+  const chatItems = useThread ? renderThreadTimeline() : renderLegacyTimeline();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -167,52 +430,15 @@ export function BoardChatView({ sessionId }: Props) {
       <div className="relative min-h-0 flex-1">
         <div ref={chatScrollRef} className="h-full overflow-y-auto px-3 py-4">
           <ul className="mx-auto flex max-w-3xl flex-col gap-1">
-          {brief ? <ChatUserBubble text={brief} /> : null}
+            {chatItems}
 
-          {loading && !meetingPlan ? (
-            <ChatSystemBubble variant="status">Chair is convening the board…</ChatSystemBubble>
-          ) : null}
+            {glossaryEntries.length > 0 ? (
+              <ChatGlossaryMessage entries={glossaryEntries} />
+            ) : null}
 
-          {meetingPlan ? <ChatExpertsInvite plan={meetingPlan} /> : null}
-
-          {turns.map((t) => (
-            <DiscussionTurn
-              key={t.id}
-              turn={t}
-              role={roleById.get(t.roleId)}
-              glossaryEntries={glossaryEntries}
-              explainContext={
-                baseExplainContext
-                  ? {
-                      ...baseExplainContext,
-                      transcriptSnippet: buildTranscriptSnippet(turns, t.id),
-                    }
-                  : undefined
-              }
-              explainDisabled={explainDisabled}
-            />
-          ))}
-
-          {loading && meetingPlan && turns.length === 0 ? (
-            <ChatSystemBubble variant="status">Experts are joining the discussion…</ChatSystemBubble>
-          ) : null}
-
-          {briefing && baseExplainContext ? (
-            <ChatBriefingCard
-              briefing={briefing}
-              glossaryEntries={glossaryEntries}
-              explainContext={baseExplainContext}
-              explainDisabled={explainDisabled}
-            />
-          ) : null}
-
-          {glossaryEntries.length > 0 ? (
-            <ChatGlossaryMessage entries={glossaryEntries} />
-          ) : null}
-
-          {statusMessage ? (
-            <ChatSystemBubble variant="status">{statusMessage}</ChatSystemBubble>
-          ) : null}
+            {statusMessage ? (
+              <ChatSystemBubble variant="status">{statusMessage}</ChatSystemBubble>
+            ) : null}
           </ul>
           <div ref={chatEndRef} className="h-1" aria-hidden />
         </div>
@@ -241,12 +467,19 @@ export function BoardChatView({ sessionId }: Props) {
       </div>
 
       <ChatComposer
-        value={brief}
-        onChange={() => {}}
-        onSubmit={() => {}}
+        value={composerEnabled ? composerValue : brief}
+        onChange={composerEnabled ? setComposerValue : () => {}}
+        onSubmit={composerEnabled ? handleComposerSubmit : () => {}}
         loading={loading}
-        disabled
+        disabled={!composerEnabled}
         variant="thread"
+        mentionCandidates={mentionCandidates}
+        inputRef={composerRef}
+        placeholder={
+          status === "awaiting_user"
+            ? "Suggest a different goal or roster…"
+            : undefined
+        }
       />
     </div>
   );

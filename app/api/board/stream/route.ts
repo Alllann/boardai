@@ -1,8 +1,19 @@
 import { MAX_BRIEF_CHARS } from "@/lib/board-constants";
-import type { BoardEmitEvent, BoardStreamEvent } from "@/lib/board-events";
-import { runBoardSessionWithEvents } from "@/lib/board-runner";
+import type { BoardEmitEvent, BoardStreamEvent, StreamAction } from "@/lib/board-events";
+import {
+  resumeBoardSessionWithEvents,
+  runBoardSessionWithEvents,
+} from "@/lib/board-runner";
+import type { StreamContext } from "@/lib/board-events";
 
 export const maxDuration = 300;
+
+type RequestBody = {
+  sessionId?: string;
+  brief?: string;
+  action?: StreamAction["action"];
+  message?: string;
+};
 
 export async function POST(req: Request) {
   let body: unknown;
@@ -15,30 +26,48 @@ export async function POST(req: Request) {
     });
   }
 
-  if (
-    typeof body !== "object" ||
-    body === null ||
-    !("brief" in body) ||
-    typeof (body as { brief: unknown }).brief !== "string"
-  ) {
-    return new Response(
-      JSON.stringify({ error: 'Expected JSON body: { "brief": string }' }),
-      { status: 400, headers: { "Content-Type": "application/json" } },
-    );
+  const parsed = body as RequestBody;
+  const action = parsed.action ?? "start";
+  const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
+
+  let userBrief = typeof parsed.brief === "string" ? parsed.brief.trim() : "";
+
+  if (action === "start") {
+    if (!userBrief) {
+      return new Response(JSON.stringify({ error: "brief must be non-empty" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    if (userBrief.length > MAX_BRIEF_CHARS) {
+      return new Response(
+        JSON.stringify({ error: `brief exceeds ${MAX_BRIEF_CHARS} characters` }),
+        { status: 413, headers: { "Content-Type": "application/json" } },
+      );
+    }
+  } else {
+    if (!message && action !== "approve_proposal") {
+      return new Response(JSON.stringify({ error: "message is required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
   }
 
-  const brief = (body as { brief: string }).brief.trim();
-  if (!brief) {
-    return new Response(JSON.stringify({ error: "brief must be non-empty" }), {
+  const streamContext: StreamContext | undefined =
+    action !== "start"
+      ? parseStreamContext(body)
+      : undefined;
+
+  if (action !== "start" && !streamContext) {
+    return new Response(JSON.stringify({ error: "Invalid stream context" }), {
       status: 400,
       headers: { "Content-Type": "application/json" },
     });
   }
-  if (brief.length > MAX_BRIEF_CHARS) {
-    return new Response(
-      JSON.stringify({ error: `brief exceeds ${MAX_BRIEF_CHARS} characters` }),
-      { status: 413, headers: { "Content-Type": "application/json" } },
-    );
+
+  if (streamContext) {
+    userBrief = streamContext.userBrief;
   }
 
   const encoder = new TextEncoder();
@@ -48,16 +77,30 @@ export async function POST(req: Request) {
         controller.enqueue(encoder.encode(`${JSON.stringify(obj)}\n`));
       };
       try {
-        await runBoardSessionWithEvents(
-          brief,
-          async (event: BoardEmitEvent) => {
+        if (action === "start") {
+          await runBoardSessionWithEvents(userBrief, async (event: BoardEmitEvent) => {
             write(event);
-          },
-        );
+          });
+        } else {
+          const streamAction: StreamAction =
+            action === "approve_proposal"
+              ? { action: "approve_proposal" }
+              : action === "proposal_reply"
+                ? { action: "proposal_reply", message }
+                : { action: "follow_up", message };
+
+          await resumeBoardSessionWithEvents(
+            streamAction,
+            streamContext!,
+            async (event: BoardEmitEvent) => {
+              write(event);
+            },
+          );
+        }
         write({ type: "done" });
       } catch (e) {
-        const message = e instanceof Error ? e.message : "Unknown error";
-        write({ type: "error", message });
+        const errMessage = e instanceof Error ? e.message : "Unknown error";
+        write({ type: "error", message: errMessage });
         write({ type: "done" });
       } finally {
         controller.close();
@@ -72,4 +115,19 @@ export async function POST(req: Request) {
       "Cache-Control": "no-store",
     },
   });
+}
+
+function parseStreamContext(body: unknown): StreamContext | undefined {
+  if (typeof body !== "object" || body === null) return undefined;
+  const o = body as Record<string, unknown>;
+  if (typeof o.userBrief !== "string" || !o.userBrief.trim()) return undefined;
+  return {
+    userBrief: o.userBrief.trim(),
+    meetingPlan: (o.meetingPlan as StreamContext["meetingPlan"]) ?? null,
+    turns: Array.isArray(o.turns) ? (o.turns as StreamContext["turns"]) : [],
+    briefing: (o.briefing as StreamContext["briefing"]) ?? null,
+    roundCount: typeof o.roundCount === "number" ? o.roundCount : 0,
+    pendingProposal:
+      (o.pendingProposal as StreamContext["pendingProposal"]) ?? null,
+  };
 }

@@ -50,13 +50,12 @@ export function DiscussionTurn({
             text={turn.content}
             glossaryEntries={glossaryEntries}
             context={context}
-            blockText={turn.content}
-            showBlockExplain
             disabled={explainDisabled}
-            className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+            markdown
+            className="mt-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
           />
         ) : (
-          <div className="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+          <div className="mt-3 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
             <GlossaryText text={turn.content} entries={glossaryEntries} />
           </div>
         )}

@@ -41,8 +41,6 @@ export function BriefingSection({
       text={text}
       glossaryEntries={glossaryEntries}
       context={context}
-      blockText={text}
-      showBlockExplain
       disabled={explainDisabled}
     />
   );

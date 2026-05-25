@@ -2,10 +2,19 @@ import type {
   ChairBriefing,
   Glossary,
   MeetingPlan,
+  MeetingProposal,
+  SessionPhase,
+  SessionTimelineEvent,
+  ThreadItem,
   TranscriptTurn,
 } from "./schemas";
 
-export type SessionStatus = "idle" | "running" | "complete" | "error";
+export type SessionStatus =
+  | "idle"
+  | "running"
+  | "awaiting_user"
+  | "complete"
+  | "error";
 
 export type SessionSummary = {
   id: string;
@@ -21,11 +30,18 @@ export type BoardSession = {
   createdAt: number;
   updatedAt: number;
   status: SessionStatus;
+  phase: SessionPhase;
+  roundCount: number;
   meetingPlan: MeetingPlan | null;
   turns: TranscriptTurn[];
   briefing: ChairBriefing | null;
   glossary: Glossary | null;
   error: string | null;
+  timeline: SessionTimelineEvent[];
+  thread: ThreadItem[];
+  pendingProposal: MeetingProposal | null;
+  /** Follow-up user messages not yet tied to thread (legacy compat) */
+  userMessages: { id: string; content: string; timestamp: number; roundId: number }[];
 };
 
 const INDEX_KEY = "boardai:sessions";
@@ -60,6 +76,7 @@ function isSummary(v: unknown): v is SessionSummary {
     typeof o.updatedAt === "number" &&
     (o.status === "idle" ||
       o.status === "running" ||
+      o.status === "awaiting_user" ||
       o.status === "complete" ||
       o.status === "error")
   );
@@ -98,11 +115,83 @@ export function listSessionSummaries(): SessionSummary[] {
   return readIndex().sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** Normalize legacy sessions missing new fields. */
+export function migrateSession(raw: Record<string, unknown>): BoardSession {
+  const status = raw.status as BoardSession["status"];
+  const turns = (raw.turns as TranscriptTurn[]) ?? [];
+  const briefing = (raw.briefing as ChairBriefing | null) ?? null;
+  const glossary = (raw.glossary as Glossary | null) ?? null;
+
+  let phase = (raw.phase as SessionPhase | undefined) ?? "kickstart";
+  if (!raw.phase) {
+    if (glossary) phase = "idle";
+    else if (turns.length > 0 || briefing) phase = "discussion";
+    else if (status === "awaiting_user") phase = "kickstart";
+  }
+
+  const thread = (raw.thread as ThreadItem[] | undefined) ?? [];
+  const timeline = (raw.timeline as SessionTimelineEvent[] | undefined) ?? [];
+
+  let migratedThread = thread;
+  if (thread.length === 0 && turns.length > 0) {
+    migratedThread = [];
+    if (raw.brief) {
+      migratedThread.push({
+        kind: "user",
+        id: "initial-brief",
+        content: raw.brief as string,
+        timestamp: (raw.createdAt as number) ?? Date.now(),
+        roundId: 1,
+      });
+    }
+    for (const t of turns) {
+      migratedThread.push({ kind: "expert", roundId: 1, ...t });
+    }
+    if (briefing) {
+      migratedThread.push({ kind: "briefing", roundId: 1, payload: briefing });
+    }
+  }
+
+  return {
+    id: raw.id as string,
+    title: raw.title as string,
+    brief: raw.brief as string,
+    createdAt: raw.createdAt as number,
+    updatedAt: raw.updatedAt as number,
+    status:
+      status === "complete"
+        ? "idle"
+        : (status ?? "idle"),
+    phase,
+    roundCount: (raw.roundCount as number | undefined) ?? (turns.length > 0 ? 1 : 0),
+    meetingPlan: (raw.meetingPlan as MeetingPlan | null) ?? null,
+    turns,
+    briefing,
+    glossary,
+    error: (raw.error as string | null) ?? null,
+    timeline,
+    thread: migratedThread,
+    pendingProposal: (raw.pendingProposal as MeetingProposal | null) ?? null,
+    userMessages:
+      (raw.userMessages as BoardSession["userMessages"] | undefined) ??
+      migratedThread
+        .filter((t): t is Extract<ThreadItem, { kind: "user" }> => t.kind === "user")
+        .filter((t) => t.roundId > 1)
+        .map((t) => ({
+          id: t.id,
+          content: t.content,
+          timestamp: t.timestamp,
+          roundId: t.roundId,
+        })),
+  };
+}
+
 export function loadSession(id: string): BoardSession | null {
   try {
     const raw = localStorage.getItem(sessionKey(id));
     if (!raw) return null;
-    return JSON.parse(raw) as BoardSession;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    return migrateSession(parsed);
   } catch {
     return null;
   }
@@ -133,11 +222,25 @@ export function createSession(brief: string): BoardSession {
     createdAt: now,
     updatedAt: now,
     status: "running",
+    phase: "kickstart",
+    roundCount: 0,
     meetingPlan: null,
     turns: [],
     briefing: null,
     glossary: null,
     error: null,
+    timeline: [],
+    thread: [
+      {
+        kind: "user",
+        id: "initial-brief",
+        content: trimmed,
+        timestamp: now,
+        roundId: 1,
+      },
+    ],
+    pendingProposal: null,
+    userMessages: [],
   };
   saveSession(session);
   sessionStorage.setItem(`${AUTOSTART_KEY_PREFIX}${session.id}`, "1");
@@ -165,6 +268,57 @@ export function patchSession(
 
   saveSession(updated);
   return updated;
+}
+
+export function appendTimelineEvent(
+  id: string,
+  event: Omit<SessionTimelineEvent, "id"> & { id?: string },
+): BoardSession | null {
+  const session = loadSession(id);
+  if (!session) return null;
+
+  const entry: SessionTimelineEvent = {
+    id: event.id ?? crypto.randomUUID(),
+    message: event.message,
+    timestamp: event.timestamp,
+    afterTurnCount: event.afterTurnCount,
+  };
+
+  const exists = session.timeline.some(
+    (e) => e.message === entry.message && e.afterTurnCount === entry.afterTurnCount,
+  );
+  if (exists) return session;
+
+  const statusItem: ThreadItem = { kind: "status", ...entry };
+  return patchSession(id, {
+    timeline: [...session.timeline, entry],
+    thread: [...session.thread, statusItem],
+  });
+}
+
+export function appendThreadItem(id: string, item: ThreadItem): BoardSession | null {
+  const session = loadSession(id);
+  if (!session) return null;
+  return patchSession(id, { thread: [...session.thread, item] });
+}
+
+export function syncTurnToThread(
+  id: string,
+  turn: TranscriptTurn,
+  roundId: number,
+): BoardSession | null {
+  const session = loadSession(id);
+  if (!session) return null;
+
+  const expertItem: ThreadItem = { kind: "expert", roundId, ...turn };
+  const turns = session.turns.some((t) => t.id === turn.id)
+    ? session.turns
+    : [...session.turns, turn];
+
+  return patchSession(id, {
+    turns,
+    thread: [...session.thread, expertItem],
+  });
 }
 
 export function markAutostart(id: string): boolean {
@@ -197,4 +351,19 @@ export function groupSessionsByDate(
   }
 
   return groups.filter((g) => g.items.length > 0);
+}
+
+export function getMentionCandidates(session: BoardSession): {
+  id: string;
+  label: string;
+  type: "chair" | "expert";
+}[] {
+  const chair = { id: "chair", label: "Chair", type: "chair" as const };
+  const experts =
+    session.meetingPlan?.roles.map((r) => ({
+      id: r.id,
+      label: r.title,
+      type: "expert" as const,
+    })) ?? [];
+  return [chair, ...experts];
 }

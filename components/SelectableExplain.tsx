@@ -12,6 +12,7 @@ import {
 import { createPortal } from "react-dom";
 
 import { AnnotatedText } from "@/components/AnnotatedText";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { useFloatingViewportPosition } from "@/hooks/use-floating-viewport-position";
 import { clampFloatingToViewport } from "@/lib/floating-viewport";
 import {
@@ -58,11 +59,10 @@ type Props = {
   text: string;
   glossaryEntries: GlossaryEntry[];
   context: ExplainContextParams;
-  blockText?: string;
-  showBlockExplain?: boolean;
   disabled?: boolean;
   className?: string;
   children?: ReactNode;
+  markdown?: boolean;
 };
 
 function selectionMeetsMin(text: string): boolean {
@@ -83,10 +83,9 @@ export function SelectableExplain({
   glossaryEntries,
   children,
   context,
-  blockText,
-  showBlockExplain = false,
   disabled = false,
   className,
+  markdown = false,
 }: Props) {
   const selectableRef = useRef<HTMLDivElement>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
@@ -338,16 +337,6 @@ export function SelectableExplain({
     void runExplain(pendingSelection, surrounding, toolbar, pendingOffsets);
   };
 
-  const handleBlockExplain = () => {
-    const source = blockText?.trim() || text.trim();
-    if (!source || disabled) return;
-    const rect = selectableRef.current?.getBoundingClientRect();
-    const anchor = rect
-      ? { x: rect.left + rect.width / 2, y: rect.top + 8 }
-      : { x: window.innerWidth / 2, y: 80 };
-    void runExplain(source, source, anchor, { start: 0, end: text.length });
-  };
-
   const handleHighlightClick = useCallback(
     (highlight: ExplainHighlight, element: HTMLElement) => {
       const rect = element.getBoundingClientRect();
@@ -477,33 +466,44 @@ export function SelectableExplain({
       </>
     ) : null;
 
+  const annotatedRenderer = useCallback(
+    (chunk: string) => (
+      <AnnotatedText
+        text={chunk}
+        entries={glossaryEntries}
+        highlights={highlights}
+        pendingHighlight={loadingHighlight}
+        onExplainHighlightClick={handleHighlightClick}
+      />
+    ),
+    [glossaryEntries, highlights, loadingHighlight, handleHighlightClick],
+  );
+
+  const body = markdown ? (
+    <MarkdownContent
+      text={text}
+      glossaryEntries={glossaryEntries}
+      renderText={annotatedRenderer}
+    />
+  ) : (
+    <AnnotatedText
+      text={text}
+      entries={glossaryEntries}
+      highlights={highlights}
+      pendingHighlight={loadingHighlight}
+      onExplainHighlightClick={handleHighlightClick}
+    />
+  );
+
   return (
     <>
       <div className={className}>
-        {showBlockExplain && blockText ? (
-          <div className="mb-1 flex justify-end">
-            <button
-              type="button"
-              disabled={disabled}
-              onClick={handleBlockExplain}
-              className="text-xs font-medium text-zinc-500 hover:text-zinc-800 disabled:opacity-40 dark:text-zinc-400 dark:hover:text-zinc-200"
-            >
-              Explain this
-            </button>
-          </div>
-        ) : null}
         <div
           ref={selectableRef}
           onMouseUp={readSelection}
           onKeyUp={readSelection}
         >
-          <AnnotatedText
-            text={text}
-            entries={glossaryEntries}
-            highlights={highlights}
-            pendingHighlight={loadingHighlight}
-            onExplainHighlightClick={handleHighlightClick}
-          />
+          {body}
         </div>
         {children}
       </div>

@@ -135,3 +135,100 @@ export const explainResponseSchema = z.object({
 });
 
 export type ExplainResponse = z.infer<typeof explainResponseSchema>;
+
+export const sessionTimelineEventSchema = z.object({
+  id: z.string(),
+  message: z.string().min(1).max(200),
+  timestamp: z.number(),
+  afterTurnCount: z.number().int().nonnegative(),
+});
+
+export type SessionTimelineEvent = z.infer<typeof sessionTimelineEventSchema>;
+
+export const meetingProposalSchema = meetingPlanSchema
+  .extend({
+    id: z.string().min(1),
+    goalNeedsConfirmation: z.boolean(),
+    rosterNeedsConfirmation: z.boolean(),
+    chairMessage: z.string().min(1).max(1200),
+  })
+  .refine(
+    (p) => new Set(p.roles.map((r) => r.id)).size === p.roles.length,
+    "duplicate role id in roles",
+  );
+
+export type MeetingProposal = z.infer<typeof meetingProposalSchema>;
+
+export type SessionPhase =
+  | "kickstart"
+  | "discussion"
+  | "follow_up"
+  | "idle"
+  | "complete";
+
+export type ThreadUserItem = {
+  kind: "user";
+  id: string;
+  content: string;
+  timestamp: number;
+  roundId: number;
+};
+
+export type ThreadExpertItem = {
+  kind: "expert";
+  roundId: number;
+} & TranscriptTurn;
+
+export type ThreadChairItem = {
+  kind: "chair";
+  id: string;
+  content: string;
+  timestamp: number;
+  roundId: number;
+};
+
+export type ThreadBriefingItem = {
+  kind: "briefing";
+  roundId: number;
+  payload: ChairBriefing;
+};
+
+export type ThreadProposalItem = {
+  kind: "proposal";
+  payload: MeetingProposal;
+  status: "pending" | "approved";
+};
+
+export type ThreadStatusItem = {
+  kind: "status";
+} & SessionTimelineEvent;
+
+export type ThreadItem =
+  | ThreadUserItem
+  | ThreadExpertItem
+  | ThreadChairItem
+  | ThreadBriefingItem
+  | ThreadProposalItem
+  | ThreadStatusItem;
+
+export const chairRouteSchema = z.object({
+  action: z.enum([
+    "expert_direct",
+    "follow_up_round",
+    "chair_reply",
+    "revise_roster",
+  ]),
+  targetRoleId: z.string().optional(),
+  followUpGoal: z.string().optional(),
+  turnSchedule: z.array(z.string()).optional(),
+  chairReply: z.string().optional(),
+  newRoles: z.array(roleSchema).optional(),
+});
+
+export type ChairRoute = z.infer<typeof chairRouteSchema>;
+
+export type MentionCandidate = {
+  id: string;
+  label: string;
+  type: "chair" | "expert";
+};

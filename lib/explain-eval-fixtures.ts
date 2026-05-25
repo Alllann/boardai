@@ -34,7 +34,7 @@ export function filterExplainEvalCases(
     }
   }
   if (opts.tag) {
-    filtered = filtered.filter((c) => c.tags?.includes(opts.tag));
+    filtered = filtered.filter((c) => c.tags?.includes(opts.tag!));
     if (filtered.length === 0) {
       throw new Error(`No eval cases with tag "${opts.tag}"`);
     }

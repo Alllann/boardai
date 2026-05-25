@@ -45,7 +45,7 @@ export function useFloatingViewportPosition(
       el && typeof ResizeObserver !== "undefined"
         ? new ResizeObserver(update)
         : null;
-    ro?.observe(el);
+    if (el && ro) ro.observe(el);
 
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);

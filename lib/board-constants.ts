@@ -22,3 +22,7 @@ export const MAX_TAKEAWAY_CHARS = 280;
 export const EXPLAIN_MIN_SELECTION_CHARS = 8;
 export const EXPLAIN_MAX_SELECTION_CHARS = 500;
 export const MAX_ON_DEMAND_EXPLAIN_CHARS = 900;
+
+/** Reader guide eval prompts. */
+export const MAX_READER_EXPLANATION_CHARS = 600;
+export const MAX_READER_THREAD_FRAMING_CHARS = 400;
