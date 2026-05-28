@@ -38,19 +38,28 @@ export function BoardChatView({ sessionId }: Props) {
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
+  const pinnedToBottomRef = useRef(true);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [composerValue, setComposerValue] = useState("");
 
   const SCROLL_BOTTOM_THRESHOLD = 80;
 
+  const isNearBottom = useCallback((el: HTMLDivElement) => {
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    return distanceFromBottom <= SCROLL_BOTTOM_THRESHOLD;
+  }, []);
+
   const checkScrollPosition = useCallback(() => {
     const el = chatScrollRef.current;
     if (!el) return;
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-    setShowJumpToBottom(distanceFromBottom > SCROLL_BOTTOM_THRESHOLD);
-  }, []);
+    const nearBottom = isNearBottom(el);
+    pinnedToBottomRef.current = nearBottom;
+    setShowJumpToBottom(!nearBottom);
+  }, [isNearBottom]);
 
   const jumpToBottom = useCallback(() => {
+    pinnedToBottomRef.current = true;
+    setShowJumpToBottom(false);
     chatEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, []);
 
@@ -96,6 +105,11 @@ export function BoardChatView({ sessionId }: Props) {
   }, [brief, meetingPlan, turns, briefing]);
 
   useEffect(() => {
+    pinnedToBottomRef.current = true;
+    setShowJumpToBottom(false);
+  }, [sessionId]);
+
+  useEffect(() => {
     const el = chatScrollRef.current;
     if (!el) return;
     el.addEventListener("scroll", checkScrollPosition, { passive: true });
@@ -104,8 +118,12 @@ export function BoardChatView({ sessionId }: Props) {
   }, [checkScrollPosition, turns.length, meetingPlan, briefing, glossary, loading, thread.length]);
 
   useEffect(() => {
-    jumpToBottom();
-  }, [turns.length, thread.length, loading, jumpToBottom]);
+    if (pinnedToBottomRef.current) {
+      jumpToBottom();
+    } else {
+      checkScrollPosition();
+    }
+  }, [turns.length, thread.length, loading, jumpToBottom, checkScrollPosition]);
 
   const copyText = async (label: string, text: string) => {
     try {
