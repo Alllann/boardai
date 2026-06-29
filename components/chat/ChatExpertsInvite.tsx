@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { getRolePalette } from "@/lib/role-colors";
+import { ExpertAvatar } from "@/components/ExpertAvatar";
 import type { MeetingPlan } from "@/lib/schemas";
 
 type Props = {
@@ -40,33 +40,35 @@ export function ChatExpertsInvite({ plan }: Props) {
         </button>
         {expanded ? (
           <ul className="mt-2 space-y-2 border-t border-amber-200/60 pt-2 dark:border-amber-800/40">
-            {plan.roles.map((r) => {
-              const palette = getRolePalette(r.id);
-              return (
-                <li
-                  key={r.id}
-                  className={`rounded-lg border px-2.5 py-2 text-xs ${palette.border} ${palette.bg}`}
-                >
+            {plan.roles.map((r) => (
+              <li
+                key={r.id}
+                className="flex gap-2.5 rounded-lg border border-zinc-200 bg-white/90 px-2.5 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-950/50"
+              >
+                <ExpertAvatar role={r} size="sm" />
+                <div className="min-w-0">
                   <p className="font-medium text-zinc-900 dark:text-zinc-100">{r.title}</p>
-                  <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">{r.mandate}</p>
-                </li>
-              );
-            })}
+                  {r.background ? (
+                    <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">
+                      {r.background}
+                    </p>
+                  ) : null}
+                  <p className="mt-0.5 leading-snug text-zinc-500 dark:text-zinc-500">{r.mandate}</p>
+                </div>
+              </li>
+            ))}
           </ul>
         ) : (
-          <p className="mt-1.5 flex flex-wrap gap-1.5">
-            {plan.roles.map((r) => {
-              const palette = getRolePalette(r.id);
-              return (
-                <span
-                  key={r.id}
-                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${palette.chip}`}
-                >
-                  {r.title}
-                </span>
-              );
-            })}
-          </p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {plan.roles.map((r) => (
+              <span
+                key={r.id}
+                className="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
+              >
+                {r.title}
+              </span>
+            ))}
+          </div>
         )}
       </div>
     </li>

@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 
-import { getRolePalette } from "@/lib/role-colors";
 import type { MeetingPlan } from "@/lib/schemas";
 
 type Role = MeetingPlan["roles"][number];
@@ -13,17 +12,12 @@ type Props = {
 };
 
 export function RoleBadge({ role, compact = false }: Props) {
-  const palette = getRolePalette(role.id);
   const [expanded, setExpanded] = useState(false);
   const mandateLong = role.mandate.length > 120;
 
   return (
     <div className="min-w-0">
       <div className="flex items-center gap-2">
-        <span
-          className={`h-2 w-2 shrink-0 rounded-full ${palette.dot}`}
-          aria-hidden
-        />
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
           {role.title}
         </span>
@@ -34,11 +28,20 @@ export function RoleBadge({ role, compact = false }: Props) {
             expanded ? "" : "line-clamp-2"
           }`}
         >
-          <span className="font-medium text-zinc-500 dark:text-zinc-500">Mandate: </span>
-          {role.mandate}
+          {role.background ? (
+            <>
+              <span className="font-medium text-zinc-500 dark:text-zinc-500">Background: </span>
+              {role.background}
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-zinc-500 dark:text-zinc-500">Mandate: </span>
+              {role.mandate}
+            </>
+          )}
         </p>
       ) : null}
-      {!compact && mandateLong ? (
+      {!compact && mandateLong && !role.background ? (
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}

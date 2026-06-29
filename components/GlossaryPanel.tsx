@@ -6,12 +6,26 @@ import type { GlossaryEntry } from "@/lib/schemas";
 
 type Props = {
   entries: GlossaryEntry[];
+  defaultOpen?: boolean;
 };
 
-export function GlossaryPanel({ entries }: Props) {
-  const [open, setOpen] = useState(false);
+export function GlossaryPanel({ entries, defaultOpen = false }: Props) {
+  const [open, setOpen] = useState(defaultOpen);
 
   if (entries.length === 0) return null;
+
+  if (defaultOpen) {
+    return (
+      <ul className="space-y-3">
+        {entries.map((e, i) => (
+          <li key={`${e.phrase}-${i}`} className="text-xs">
+            <span className="font-medium text-zinc-800 dark:text-zinc-200">{e.phrase}</span>
+            <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">{e.explanation}</p>
+          </li>
+        ))}
+      </ul>
+    );
+  }
 
   return (
     <div className="rounded-lg border border-zinc-200 bg-white/80 dark:border-zinc-700 dark:bg-zinc-950/50">

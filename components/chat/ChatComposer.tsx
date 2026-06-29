@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 
+import { ExpertAvatar } from "@/components/ExpertAvatar";
 import type { MentionCandidate } from "@/lib/schemas";
 
 type Props = {
@@ -98,14 +99,26 @@ export function ChatComposer({
             <li key={c.id}>
               <button
                 type="button"
-                className="flex w-full px-3 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                className="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm hover:bg-zinc-100 dark:hover:bg-zinc-800"
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => insertMention(c)}
               >
-                <span className="font-medium text-emerald-700 dark:text-emerald-400">
-                  @{c.label}
-                </span>
-                <span className="ml-2 text-xs text-zinc-500">
+                {c.type === "expert" ? (
+                  <ExpertAvatar
+                    role={{
+                      id: c.id,
+                      title: c.label,
+                      mandate: "",
+                    }}
+                    size="sm"
+                  />
+                ) : (
+                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-amber-200 text-[10px] font-semibold text-amber-900 dark:bg-amber-800 dark:text-amber-100">
+                    C
+                  </span>
+                )}
+                <span className="font-medium text-zinc-800 dark:text-zinc-200">@{c.label}</span>
+                <span className="text-xs text-zinc-500">
                   {c.type === "chair" ? "Chair" : "Expert"}
                 </span>
               </button>

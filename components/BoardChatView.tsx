@@ -6,12 +6,13 @@ import { ChatBriefingCard } from "@/components/chat/ChatBriefingCard";
 import { ChatChairMessage } from "@/components/chat/ChatChairMessage";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatExpertsInvite } from "@/components/chat/ChatExpertsInvite";
-import { ChatGlossaryMessage } from "@/components/chat/ChatGlossaryMessage";
 import { ChatProposalCard } from "@/components/chat/ChatProposalCard";
 import { ChatSystemBubble } from "@/components/chat/ChatSystemBubble";
 import { ChatUserBubble } from "@/components/chat/ChatUserBubble";
 import { DiscussionTurn } from "@/components/DiscussionTurn";
+import { DiscussionTypingIndicator } from "@/components/DiscussionTypingIndicator";
 import { ThreadHeader } from "@/components/shell/ThreadHeader";
+import { GlossarySidebar, GlossarySidebarRail } from "@/components/shell/GlossarySidebar";
 import { useShell } from "@/components/shell/ShellContext";
 import type { ExplainContextParams } from "@/components/SelectableExplain";
 import { useBoardStream } from "@/hooks/useBoardStream";
@@ -27,12 +28,17 @@ type Props = {
   sessionId: string;
 };
 
+function isLegacyDiscussionCount(message: string): boolean {
+  return /^Discussion · \d+ message/.test(message);
+}
+
 export function BoardChatView({ sessionId }: Props) {
   const {
     state,
     approveProposal,
     sendProposalReply,
     sendFollowUp,
+    interruptDiscussion,
   } = useBoardStream(sessionId);
   const { setMobileSidebarOpen, focusMode, setFocusMode } = useShell();
   const chatEndRef = useRef<HTMLDivElement>(null);
@@ -41,6 +47,7 @@ export function BoardChatView({ sessionId }: Props) {
   const pinnedToBottomRef = useRef(true);
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [composerValue, setComposerValue] = useState("");
+  const [glossaryExpanded, setGlossaryExpanded] = useState(false);
 
   const SCROLL_BOTTOM_THRESHOLD = 80;
 
@@ -77,6 +84,7 @@ export function BoardChatView({ sessionId }: Props) {
   const thread = state?.thread ?? [];
   const pendingProposal = state?.pendingProposal ?? null;
   const status = state?.status ?? "idle";
+  const roundCount = state?.roundCount ?? 1;
   const mentionCandidates = useMemo(
     () => (session ? getMentionCandidates(session) : []),
     [session],
@@ -103,6 +111,19 @@ export function BoardChatView({ sessionId }: Props) {
       briefingSnippet: briefing ? buildBriefingSnippet(briefing) : undefined,
     };
   }, [brief, meetingPlan, turns, briefing]);
+
+  const discussionInProgress =
+    loading && !!meetingPlan && !briefing && !pendingProposal;
+
+  const nextSpeakerRole = useMemo(() => {
+    if (!discussionInProgress || !meetingPlan) return null;
+    const completedInRound = thread.filter(
+      (t) => t.kind === "expert" && t.roundId === roundCount,
+    ).length;
+    const nextRoleId = meetingPlan.turnSchedule[completedInRound];
+    if (!nextRoleId) return null;
+    return roleById.get(nextRoleId) ?? null;
+  }, [discussionInProgress, meetingPlan, thread, roundCount, roleById]);
 
   useEffect(() => {
     pinnedToBottomRef.current = true;
@@ -142,7 +163,7 @@ export function BoardChatView({ sessionId }: Props) {
     if (turns.length === 0) return "Inviting experts to the group…";
     if (!briefing) {
       if (meetingPlan && turns.length < meetingPlan.turnSchedule.length) {
-        return `Discussion · ${turns.length} message${turns.length === 1 ? "" : "s"}`;
+        return null;
       }
       return "Writing briefing…";
     }
@@ -151,16 +172,18 @@ export function BoardChatView({ sessionId }: Props) {
   })();
 
   const composerEnabled =
-    !loading &&
-    (status === "awaiting_user" ||
-      (status === "idle" && !!meetingPlan && !!glossary));
+    status === "awaiting_user" ||
+    discussionInProgress ||
+    (!loading && status === "idle" && !!meetingPlan && !!glossary);
 
   const handleComposerSubmit = () => {
     const msg = composerValue.trim();
-    if (!msg || loading) return;
-    if (status === "awaiting_user" && pendingProposal) {
+    if (!msg) return;
+    if (discussionInProgress) {
+      void interruptDiscussion(msg);
+    } else if (status === "awaiting_user" && pendingProposal) {
       void sendProposalReply(msg);
-    } else if (status === "idle") {
+    } else if (status === "idle" && !loading) {
       void sendFollowUp(msg);
     }
     setComposerValue("");
@@ -221,15 +244,6 @@ export function BoardChatView({ sessionId }: Props) {
     const key = threadItemKey(item, index);
 
     if (item.kind === "user") {
-      if (item.id === "initial-brief" || (index === 0 && item.content === brief)) {
-        return (
-          <ChatUserBubble
-            key={key}
-            text={item.content}
-            mentionCandidates={mentionCandidates}
-          />
-        );
-      }
       return (
         <ChatUserBubble
           key={key}
@@ -240,6 +254,7 @@ export function BoardChatView({ sessionId }: Props) {
     }
 
     if (item.kind === "status") {
+      if (isLegacyDiscussionCount(item.message)) return null;
       return (
         <ChatSystemBubble key={key} variant="status">
           {item.message}
@@ -312,6 +327,7 @@ export function BoardChatView({ sessionId }: Props) {
 
     const preTurnEvents = timeline.filter((e) => e.afterTurnCount === 0);
     for (const ev of preTurnEvents) {
+      if (isLegacyDiscussionCount(ev.message)) continue;
       items.push(
         <ChatSystemBubble key={ev.id} variant="status">
           {ev.message}
@@ -338,6 +354,7 @@ export function BoardChatView({ sessionId }: Props) {
     turns.forEach((t, i) => {
       const turnEvents = timeline.filter((e) => e.afterTurnCount === i + 1);
       for (const ev of turnEvents) {
+        if (isLegacyDiscussionCount(ev.message)) continue;
         items.push(
           <ChatSystemBubble key={ev.id} variant="status">
             {ev.message}
@@ -365,20 +382,12 @@ export function BoardChatView({ sessionId }: Props) {
 
     const postTurnEvents = timeline.filter((e) => e.afterTurnCount === turns.length);
     for (const ev of postTurnEvents) {
-      if (
-        !items.some(
-          (_, idx) =>
-            idx > 0 &&
-            ev.message.startsWith("Discussion") &&
-            timeline.filter((x) => x.message.startsWith("Discussion")).length > 1,
-        )
-      ) {
-        items.push(
-          <ChatSystemBubble key={`post-${ev.id}`} variant="status">
-            {ev.message}
-          </ChatSystemBubble>,
-        );
-      }
+      if (isLegacyDiscussionCount(ev.message)) continue;
+      items.push(
+        <ChatSystemBubble key={`post-${ev.id}`} variant="status">
+          {ev.message}
+        </ChatSystemBubble>,
+      );
     }
 
     if (briefing && baseExplainContext) {
@@ -428,6 +437,12 @@ export function BoardChatView({ sessionId }: Props) {
   const useThread = thread.length > 0;
   const chatItems = useThread ? renderThreadTimeline() : renderLegacyTimeline();
 
+  const composerPlaceholder = discussionInProgress
+    ? "Join the discussion…"
+    : status === "awaiting_user"
+      ? "Suggest a different goal or roster…"
+      : undefined;
+
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <ThreadHeader
@@ -445,59 +460,74 @@ export function BoardChatView({ sessionId }: Props) {
         </div>
       ) : null}
 
-      <div className="relative min-h-0 flex-1">
-        <div ref={chatScrollRef} className="h-full overflow-y-auto px-3 py-4">
-          <ul className="mx-auto flex max-w-3xl flex-col gap-1">
-            {chatItems}
+      <div className="flex min-h-0 flex-1">
+        <div className="relative min-h-0 min-w-0 flex-1">
+          <div ref={chatScrollRef} className="h-full overflow-y-auto px-3 py-4">
+            <ul className="mx-auto flex max-w-3xl flex-col gap-1">
+              {chatItems}
 
-            {glossaryEntries.length > 0 ? (
-              <ChatGlossaryMessage entries={glossaryEntries} />
-            ) : null}
+              {nextSpeakerRole ? (
+                <DiscussionTypingIndicator role={nextSpeakerRole} />
+              ) : null}
 
-            {statusMessage ? (
-              <ChatSystemBubble variant="status">{statusMessage}</ChatSystemBubble>
-            ) : null}
-          </ul>
-          <div ref={chatEndRef} className="h-1" aria-hidden />
+              {statusMessage ? (
+                <ChatSystemBubble variant="status">{statusMessage}</ChatSystemBubble>
+              ) : null}
+            </ul>
+            <div ref={chatEndRef} className="h-1" aria-hidden />
+          </div>
+
+          {showJumpToBottom ? (
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
+              <button
+                type="button"
+                onClick={jumpToBottom}
+                className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--main-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] shadow-md transition hover:bg-[var(--surface-hover)]"
+              >
+                <svg
+                  viewBox="0 0 24 24"
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  aria-hidden
+                >
+                  <path d="M12 5v14M5 12l7 7 7-7" />
+                </svg>
+                Jump to bottom
+              </button>
+            </div>
+          ) : null}
         </div>
 
-        {showJumpToBottom ? (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
-            <button
-              type="button"
-              onClick={jumpToBottom}
-              className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--main-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] shadow-md transition hover:bg-[var(--surface-hover)]"
-            >
-              <svg
-                viewBox="0 0 24 24"
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                aria-hidden
-              >
-                <path d="M12 5v14M5 12l7 7 7-7" />
-              </svg>
-              Jump to bottom
-            </button>
-          </div>
-        ) : null}
+        <GlossarySidebar
+          entries={glossaryEntries}
+          expanded={glossaryExpanded}
+          onToggle={() => setGlossaryExpanded((v) => !v)}
+        />
+        <GlossarySidebarRail
+          entries={glossaryEntries}
+          expanded={glossaryExpanded}
+          onToggle={() => setGlossaryExpanded(true)}
+        />
       </div>
+
+      {discussionInProgress ? (
+        <p className="shrink-0 border-t border-zinc-100 px-4 py-1.5 text-center text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+          Discussion in progress — send anytime to jump in.
+        </p>
+      ) : null}
 
       <ChatComposer
         value={composerEnabled ? composerValue : brief}
         onChange={composerEnabled ? setComposerValue : () => {}}
         onSubmit={composerEnabled ? handleComposerSubmit : () => {}}
-        loading={loading}
+        loading={loading && !discussionInProgress}
         disabled={!composerEnabled}
         variant="thread"
         mentionCandidates={mentionCandidates}
         inputRef={composerRef}
-        placeholder={
-          status === "awaiting_user"
-            ? "Suggest a different goal or roster…"
-            : undefined
-        }
+        placeholder={composerPlaceholder}
       />
     </div>
   );

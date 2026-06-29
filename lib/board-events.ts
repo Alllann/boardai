@@ -31,13 +31,15 @@ export type StreamAction =
   | { action: "start" }
   | { action: "approve_proposal" }
   | { action: "proposal_reply"; message: string }
-  | { action: "follow_up"; message: string };
+  | { action: "follow_up"; message: string }
+  | { action: "interrupt_discussion"; message: string; scheduleIndex: number };
 
 export type StreamContext = {
   userBrief: string;
   meetingPlan: MeetingPlan | null;
   turns: TranscriptTurn[];
   briefing: ChairBriefing | null;
+  glossary: Glossary | null;
   roundCount: number;
   pendingProposal: MeetingProposal | null;
 };

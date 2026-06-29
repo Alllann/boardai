@@ -64,15 +64,21 @@ function buildStreamContext(session: BoardSession): StreamContext {
     meetingPlan: session.meetingPlan,
     turns: session.turns,
     briefing: session.briefing,
+    glossary: session.glossary,
     roundCount: session.roundCount,
     pendingProposal: session.pendingProposal,
   };
+}
+
+function isDiscussionCountMessage(message: string): boolean {
+  return /^Discussion · \d+ message/.test(message);
 }
 
 export function useBoardStream(sessionId: string) {
   const [revision, setRevision] = useState(0);
   const [streaming, setStreaming] = useState(false);
   const streamStartedRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   const bump = useCallback(() => setRevision((r) => r + 1), []);
 
@@ -81,6 +87,10 @@ export function useBoardStream(sessionId: string) {
 
   const consumeStream = useCallback(
     async (body: Record<string, unknown>) => {
+      abortControllerRef.current?.abort();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
+
       setStreaming(true);
       patchSession(sessionId, { status: "running", error: null });
       bump();
@@ -90,6 +100,7 @@ export function useBoardStream(sessionId: string) {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body),
+          signal: controller.signal,
         });
 
         const ct = res.headers.get("content-type") ?? "";
@@ -160,14 +171,6 @@ export function useBoardStream(sessionId: string) {
             case "turn": {
               const roundId = ev.roundId ?? lastRoundId;
               syncTurnToThread(sessionId, ev.payload, roundId);
-              const updated = loadSession(sessionId);
-              if (updated) {
-                appendTimelineEvent(sessionId, {
-                  message: `Discussion · ${updated.turns.length} message${updated.turns.length === 1 ? "" : "s"}`,
-                  timestamp: Date.now(),
-                  afterTurnCount: updated.turns.length,
-                });
-              }
               break;
             }
             case "chair_message": {
@@ -201,15 +204,8 @@ export function useBoardStream(sessionId: string) {
               break;
             }
             case "glossary": {
-              appendTimelineEvent(sessionId, {
-                message: "Building glossary…",
-                timestamp: Date.now(),
-                afterTurnCount: s.turns.length,
-              });
               patchSession(sessionId, {
                 glossary: ev.payload,
-                status: "idle",
-                phase: "idle",
               });
               break;
             }
@@ -249,12 +245,17 @@ export function useBoardStream(sessionId: string) {
           if (done) streamFinished = true;
         }
 
-        const final = loadSession(sessionId);
-        if (final && final.status === "running") {
-          patchSession(sessionId, { status: "idle", phase: "idle" });
-          bump();
+        if (streamFinished && !controller.signal.aborted) {
+          const final = loadSession(sessionId);
+          if (final && final.status === "running") {
+            patchSession(sessionId, { status: "idle", phase: "idle" });
+            bump();
+          }
         }
       } catch (e) {
+        if (e instanceof Error && e.name === "AbortError") {
+          return;
+        }
         const message = e instanceof Error ? e.message : "Network error";
         patchSession(sessionId, { status: "error", error: message });
         bump();
@@ -369,6 +370,43 @@ export function useBoardStream(sessionId: string) {
     [sessionId, consumeStream, bump],
   );
 
+  const interruptDiscussion = useCallback(
+    async (message: string) => {
+      const current = loadSession(sessionId);
+      if (!current?.meetingPlan || !message.trim()) return;
+
+      abortControllerRef.current?.abort();
+
+      const roundId = current.roundCount || 1;
+      const scheduleIndex = current.thread.filter(
+        (t) => t.kind === "expert" && t.roundId === roundId,
+      ).length;
+
+      const userItem: ThreadItem = {
+        kind: "user",
+        id: crypto.randomUUID(),
+        content: message.trim(),
+        timestamp: Date.now(),
+        roundId,
+      };
+
+      patchSession(sessionId, {
+        thread: [...current.thread, userItem],
+        status: "running",
+        phase: "discussion",
+      });
+      bump();
+
+      await consumeStream({
+        action: "interrupt_discussion",
+        message: message.trim(),
+        scheduleIndex,
+        ...buildStreamContext(loadSession(sessionId)!),
+      });
+    },
+    [sessionId, consumeStream, bump],
+  );
+
   useEffect(() => {
     streamStartedRef.current = false;
     const s = loadSession(sessionId);
@@ -392,5 +430,7 @@ export function useBoardStream(sessionId: string) {
     approveProposal,
     sendProposalReply,
     sendFollowUp,
+    interruptDiscussion,
+    isDiscussionCountMessage,
   };
 }

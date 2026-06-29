@@ -25,11 +25,14 @@ const roleSchema = z
     /** @deprecated Chair may still emit `name`; normalized to `title`. */
     name: z.string().min(1).max(120).optional(),
     mandate: z.string().min(1).max(800),
+    /** One-sentence credible professional background for UI profile. */
+    background: z.string().min(1).max(200).optional(),
   })
   .transform((r) => ({
     id: r.id,
     title: (r.title ?? r.name ?? "Board expert").trim(),
     mandate: r.mandate,
+    background: r.background?.trim(),
   }));
 
 export const meetingPlanSchema = z

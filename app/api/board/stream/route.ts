@@ -13,6 +13,7 @@ type RequestBody = {
   brief?: string;
   action?: StreamAction["action"];
   message?: string;
+  scheduleIndex?: number;
 };
 
 export async function POST(req: Request) {
@@ -29,6 +30,8 @@ export async function POST(req: Request) {
   const parsed = body as RequestBody;
   const action = parsed.action ?? "start";
   const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
+  const scheduleIndex =
+    typeof parsed.scheduleIndex === "number" ? parsed.scheduleIndex : 0;
 
   let userBrief = typeof parsed.brief === "string" ? parsed.brief.trim() : "";
 
@@ -78,16 +81,23 @@ export async function POST(req: Request) {
       };
       try {
         if (action === "start") {
-          await runBoardSessionWithEvents(userBrief, async (event: BoardEmitEvent) => {
-            write(event);
-          });
+          await runBoardSessionWithEvents(
+            userBrief,
+            async (event: BoardEmitEvent) => {
+              write(event);
+            },
+            undefined,
+            req.signal,
+          );
         } else {
           const streamAction: StreamAction =
             action === "approve_proposal"
               ? { action: "approve_proposal" }
               : action === "proposal_reply"
                 ? { action: "proposal_reply", message }
-                : { action: "follow_up", message };
+                : action === "interrupt_discussion"
+                  ? { action: "interrupt_discussion", message, scheduleIndex }
+                  : { action: "follow_up", message };
 
           await resumeBoardSessionWithEvents(
             streamAction,
@@ -95,6 +105,7 @@ export async function POST(req: Request) {
             async (event: BoardEmitEvent) => {
               write(event);
             },
+            req.signal,
           );
         }
         write({ type: "done" });
@@ -126,6 +137,7 @@ function parseStreamContext(body: unknown): StreamContext | undefined {
     meetingPlan: (o.meetingPlan as StreamContext["meetingPlan"]) ?? null,
     turns: Array.isArray(o.turns) ? (o.turns as StreamContext["turns"]) : [],
     briefing: (o.briefing as StreamContext["briefing"]) ?? null,
+    glossary: (o.glossary as StreamContext["glossary"]) ?? null,
     roundCount: typeof o.roundCount === "number" ? o.roundCount : 0,
     pendingProposal:
       (o.pendingProposal as StreamContext["pendingProposal"]) ?? null,

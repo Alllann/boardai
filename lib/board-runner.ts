@@ -4,7 +4,8 @@ import type { BoardEmitEvent, StreamAction, StreamContext } from "./board-events
 import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
 import { runPromptForText, getAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
-import { generateGlossary } from "./glossary-agent";
+import { generateGlossary, generateGlossaryIncremental } from "./glossary-agent";
+import { mergeGlossaries } from "./glossary-merge";
 import {
   chairBriefingPrompt,
   chairBriefingRetryPrompt,
@@ -38,6 +39,7 @@ export async function runBoardSessionWithEvents(
   userBrief: string,
   sink: (event: BoardEmitEvent) => void | Promise<void>,
   ctx?: Partial<StreamContext>,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   const options = getAgentOptions();
 
@@ -49,7 +51,7 @@ export async function runBoardSessionWithEvents(
       (ctx.roundCount ?? 0) + 1,
       sink,
       options,
-      { includeGlossary: true },
+      { includeGlossary: true, abortSignal },
     );
     return;
   }
@@ -74,6 +76,7 @@ export async function runBoardSessionWithEvents(
   await sink({ type: "meeting_plan", payload: plan, roundId: 1 });
   await runDiscussionFromPlan(userBrief, plan, [], 1, sink, options, {
     includeGlossary: true,
+    abortSignal,
   });
 }
 
@@ -81,6 +84,7 @@ export async function resumeBoardSessionWithEvents(
   action: StreamAction,
   ctx: StreamContext,
   sink: (event: BoardEmitEvent) => void | Promise<void>,
+  abortSignal?: AbortSignal,
 ): Promise<void> {
   const options = getAgentOptions();
 
@@ -94,7 +98,7 @@ export async function resumeBoardSessionWithEvents(
       (ctx.roundCount || 0) + 1,
       sink,
       options,
-      { includeGlossary: true },
+      { includeGlossary: true, abortSignal },
     );
     return;
   }
@@ -125,12 +129,33 @@ export async function resumeBoardSessionWithEvents(
     await sink({ type: "meeting_plan", payload: plan, roundId: 1 });
     await runDiscussionFromPlan(ctx.userBrief, plan, [], 1, sink, options, {
       includeGlossary: true,
+      abortSignal,
     });
     return;
   }
 
   if (action.action === "follow_up" && ctx.meetingPlan) {
     await runFollowUp(ctx.userBrief, action.message, ctx, sink, options);
+    return;
+  }
+
+  if (action.action === "interrupt_discussion" && ctx.meetingPlan) {
+    await runDiscussionFromPlan(
+      ctx.userBrief,
+      ctx.meetingPlan,
+      ctx.turns,
+      ctx.roundCount || 1,
+      sink,
+      options,
+      {
+        includeGlossary: true,
+        includeBriefing: true,
+        scheduleIndex: action.scheduleIndex,
+        userInterjection: action.message,
+        existingGlossary: ctx.glossary,
+        abortSignal,
+      },
+    );
     return;
   }
 
@@ -277,25 +302,60 @@ async function runDiscussionFromPlan(
   roundId: number,
   sink: (event: BoardEmitEvent) => void | Promise<void>,
   options: AgentOptions,
-  flags: { includeBriefing?: boolean; includeGlossary?: boolean } = {},
+  flags: {
+    includeBriefing?: boolean;
+    includeGlossary?: boolean;
+    scheduleIndex?: number;
+    userInterjection?: string;
+    abortSignal?: AbortSignal;
+    existingGlossary?: Glossary | null;
+  } = {},
 ): Promise<void> {
   const turns: TranscriptTurn[] = [...priorTurns];
-  const startId = priorTurns.length;
+  const scheduleStart = flags.scheduleIndex ?? 0;
   const otherTitles = () => plan.roles.map((r) => ({ title: r.title }));
+  let accumulatedGlossary: Glossary = flags.existingGlossary ?? { entries: [] };
+  let ownerInterjection = flags.userInterjection?.trim() || undefined;
+  let pendingGlossary: Promise<Glossary> | null = null;
 
-  for (let i = 0; i < plan.turnSchedule.length; i++) {
+  const maxTurnId = turns.reduce((m, t) => Math.max(m, t.id), 0);
+  let nextTurnId = maxTurnId;
+
+  for (let i = scheduleStart; i < plan.turnSchedule.length; i++) {
+    if (flags.abortSignal?.aborted) {
+      return;
+    }
+
+    if (pendingGlossary) {
+      const incremental = await pendingGlossary;
+      accumulatedGlossary = mergeGlossaries(accumulatedGlossary, incremental);
+      if (incremental.entries.length > 0) {
+        await sink({ type: "glossary", payload: accumulatedGlossary, roundId });
+      }
+      pendingGlossary = null;
+    }
+
     const roleId = plan.turnSchedule[i]!;
     const role = plan.roles.find((r) => r.id === roleId);
     if (!role) {
       throw new Error(`Internal error: missing role ${roleId}`);
     }
+
+    const transcriptForPrompt = formatTranscriptForPrompt(turns, ownerInterjection);
+    ownerInterjection = undefined;
+
     const prompt = expertTurnPrompt({
       expertTitle: role.title,
       mandate: role.mandate,
       otherExperts: otherTitles().filter((o) => o.title !== role.title),
-      transcriptLines: formatTranscriptForPrompt(turns),
+      transcriptLines: transcriptForPrompt,
       chairNotes: plan.chairNotesForFacilitator,
     });
+
+    if (flags.abortSignal?.aborted) {
+      return;
+    }
+
     const { text, runId } = await runPromptForText(prompt, options);
     console.info(
       "[board] expert turn",
@@ -307,17 +367,35 @@ async function runDiscussionFromPlan(
       "round",
       roundId,
     );
+
+    nextTurnId += 1;
     const turn: TranscriptTurn = {
-      id: startId + i + 1,
+      id: nextTurnId,
       roleId: role.id,
       roleName: role.title,
       content: text,
     };
     turns.push(turn);
     await sink({ type: "turn", payload: turn, roundId });
+
+    if (flags.includeGlossary) {
+      pendingGlossary = generateGlossaryIncremental(userBrief, plan, turns, options);
+    }
   }
 
-  const roundTurns = turns.slice(startId);
+  if (pendingGlossary) {
+    const incremental = await pendingGlossary;
+    accumulatedGlossary = mergeGlossaries(accumulatedGlossary, incremental);
+    if (incremental.entries.length > 0) {
+      await sink({ type: "glossary", payload: accumulatedGlossary, roundId });
+    }
+  }
+
+  if (flags.abortSignal?.aborted) {
+    return;
+  }
+
+  const roundTurns = turns.slice(priorTurns.length);
   let briefing: ChairBriefing | null = null;
 
   if (flags.includeBriefing !== false && roundTurns.length > 0) {
@@ -332,14 +410,15 @@ async function runDiscussionFromPlan(
   }
 
   if (flags.includeGlossary && briefing) {
-    const glossary = await generateGlossary(
+    const finalGlossary = await generateGlossary(
       userBrief,
       plan,
       turns,
       briefing,
       options,
     );
-    await sink({ type: "glossary", payload: glossary, roundId });
+    accumulatedGlossary = mergeGlossaries(accumulatedGlossary, finalGlossary);
+    await sink({ type: "glossary", payload: accumulatedGlossary, roundId });
   }
 }
 
@@ -443,11 +522,19 @@ export function finalizeMeetingPlan(plan: MeetingPlan): MeetingPlan {
   return { ...plan, turnSchedule: schedule };
 }
 
-function formatTranscriptForPrompt(turns: TranscriptTurn[]): string {
-  if (turns.length === 0) {
+function formatTranscriptForPrompt(
+  turns: TranscriptTurn[],
+  ownerInterjection?: string,
+): string {
+  if (turns.length === 0 && !ownerInterjection) {
     return "(Meeting just started — no prior lines.)";
   }
-  return turns.map((t) => `${t.roleName}: ${t.content}`).join("\n\n");
+  const lines = turns.map((t) => `${t.roleName}: ${t.content}`).join("\n\n");
+  if (ownerInterjection) {
+    const ownerLine = `Owner: ${ownerInterjection}`;
+    return lines ? `${lines}\n\n${ownerLine}` : ownerLine;
+  }
+  return lines || "(Meeting just started — no prior lines.)";
 }
 
 async function generateMeetingProposal(
