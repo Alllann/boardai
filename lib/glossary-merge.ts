@@ -1,4 +1,3 @@
-import { GLOSSARY_MAX_ENTRIES } from "./board-constants";
 import type { Glossary, GlossaryEntry } from "./schemas";
 
 export function mergeGlossaryEntries(
@@ -12,7 +11,7 @@ export function mergeGlossaryEntries(
   for (const entry of incoming) {
     byMatch.set(entry.match.toLowerCase(), entry);
   }
-  return Array.from(byMatch.values()).slice(0, GLOSSARY_MAX_ENTRIES);
+  return Array.from(byMatch.values());
 }
 
 export function mergeGlossaries(a: Glossary | null | undefined, b: Glossary): Glossary {

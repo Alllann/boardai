@@ -1,8 +1,8 @@
 import type { AgentOptions } from "@cursor/sdk";
 
 import type { BoardEmitEvent, StreamAction, StreamContext } from "./board-events";
-import { MAX_TURNS, TARGET_TURNS_MIN } from "./board-constants";
-import { runPromptForText, getAgentOptions } from "./agent-client";
+import { MAX_TURNS, MIN_ROLES, TARGET_TURNS_MIN } from "./board-constants";
+import { runPromptForText, runPromptStreaming, getAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
 import { generateGlossary, generateGlossaryIncremental } from "./glossary-agent";
 import { mergeGlossaries } from "./glossary-merge";
@@ -57,27 +57,14 @@ export async function runBoardSessionWithEvents(
   }
 
   const proposal = await generateMeetingProposal(userBrief, options);
-  const needsPause =
-    proposal.goalNeedsConfirmation || proposal.rosterNeedsConfirmation;
-
-  if (needsPause) {
-    await sink({ type: "meeting_proposal", payload: proposal });
-    const reason =
-      proposal.goalNeedsConfirmation && proposal.rosterNeedsConfirmation
-        ? "both"
-        : proposal.goalNeedsConfirmation
-          ? "goal"
-          : "roster";
-    await sink({ type: "awaiting_user", reason });
-    return;
-  }
-
-  const plan = proposalToPlan(proposal);
-  await sink({ type: "meeting_plan", payload: plan, roundId: 1 });
-  await runDiscussionFromPlan(userBrief, plan, [], 1, sink, options, {
-    includeGlossary: true,
-    abortSignal,
-  });
+  await sink({ type: "meeting_proposal", payload: proposal });
+  const reason =
+    proposal.goalNeedsConfirmation && proposal.rosterNeedsConfirmation
+      ? "both"
+      : proposal.goalNeedsConfirmation
+        ? "goal"
+        : "roster";
+  await sink({ type: "awaiting_user", reason });
 }
 
 export async function resumeBoardSessionWithEvents(
@@ -89,7 +76,7 @@ export async function resumeBoardSessionWithEvents(
   const options = getAgentOptions();
 
   if (action.action === "approve_proposal" && ctx.pendingProposal) {
-    const plan = proposalToPlan(ctx.pendingProposal);
+    const plan = planFromProposalWithInvites(ctx.pendingProposal, action.invitedRoleIds);
     await sink({ type: "meeting_plan", payload: plan, roundId: (ctx.roundCount || 0) + 1 });
     await runDiscussionFromPlan(
       ctx.userBrief,
@@ -110,27 +97,14 @@ export async function resumeBoardSessionWithEvents(
       action.message,
       options,
     );
-    const stillNeedsPause =
-      revised.goalNeedsConfirmation || revised.rosterNeedsConfirmation;
-
-    if (stillNeedsPause) {
-      await sink({ type: "meeting_proposal", payload: revised });
-      const reason =
-        revised.goalNeedsConfirmation && revised.rosterNeedsConfirmation
-          ? "both"
-          : revised.goalNeedsConfirmation
-            ? "goal"
-            : "roster";
-      await sink({ type: "awaiting_user", reason });
-      return;
-    }
-
-    const plan = proposalToPlan(revised);
-    await sink({ type: "meeting_plan", payload: plan, roundId: 1 });
-    await runDiscussionFromPlan(ctx.userBrief, plan, [], 1, sink, options, {
-      includeGlossary: true,
-      abortSignal,
-    });
+    await sink({ type: "meeting_proposal", payload: revised });
+    const reason =
+      revised.goalNeedsConfirmation && revised.rosterNeedsConfirmation
+        ? "both"
+        : revised.goalNeedsConfirmation
+          ? "goal"
+          : "roster";
+    await sink({ type: "awaiting_user", reason });
     return;
   }
 
@@ -208,10 +182,22 @@ async function runFollowUp(
         userMessage: message,
         briefingSummary,
       });
-      const { text } = await runPromptForText(prompt, options);
       const maxId = ctx.turns.reduce((m, t) => Math.max(m, t.id), 0);
+      const turnId = maxId + 1;
+      await sink({
+        type: "turn_start",
+        payload: { id: turnId, roleId: role.id, roleName: role.title },
+        roundId,
+      });
+      const { text } = await runPromptStreaming(
+        prompt,
+        options,
+        async (delta) => {
+          await sink({ type: "turn_delta", payload: { id: turnId, delta }, roundId });
+        },
+      );
       const turn: TranscriptTurn = {
-        id: maxId + 1,
+        id: turnId,
         roleId: role.id,
         roleName: role.title,
         content: text,
@@ -221,10 +207,15 @@ async function runFollowUp(
     }
 
     case "chair_reply": {
+      const chairId = crypto.randomUUID();
+      await sink({
+        type: "chair_start",
+        payload: { id: chairId, roundId },
+      });
       const reply =
         route.chairReply?.trim() ??
         (
-          await runPromptForText(
+          await runPromptStreaming(
             chairReplyPrompt({
               userMessage: message,
               transcriptText,
@@ -232,11 +223,17 @@ async function runFollowUp(
               briefingSummary,
             }),
             options,
+            async (delta) => {
+              await sink({
+                type: "chair_delta",
+                payload: { id: chairId, delta, roundId },
+              });
+            },
           )
         ).text;
       await sink({
         type: "chair_message",
-        payload: { id: crypto.randomUUID(), content: reply.trim(), roundId },
+        payload: { id: chairId, content: reply.trim(), roundId },
       });
       return;
     }
@@ -356,7 +353,22 @@ async function runDiscussionFromPlan(
       return;
     }
 
-    const { text, runId } = await runPromptForText(prompt, options);
+    nextTurnId += 1;
+    const turnId = nextTurnId;
+    await sink({
+      type: "turn_start",
+      payload: { id: turnId, roleId: role.id, roleName: role.title },
+      roundId,
+    });
+
+    const { text, runId } = await runPromptStreaming(
+      prompt,
+      options,
+      async (delta) => {
+        await sink({ type: "turn_delta", payload: { id: turnId, delta }, roundId });
+      },
+      flags.abortSignal,
+    );
     console.info(
       "[board] expert turn",
       i + 1,
@@ -368,9 +380,8 @@ async function runDiscussionFromPlan(
       roundId,
     );
 
-    nextTurnId += 1;
     const turn: TranscriptTurn = {
-      id: nextTurnId,
+      id: turnId,
       roleId: role.id,
       roleName: role.title,
       content: text,
@@ -435,6 +446,37 @@ function proposalToPlan(proposal: MeetingProposal): MeetingPlan {
   void _chairMessage;
   void _proposalId;
   return finalizeMeetingPlan(plan);
+}
+
+function planFromProposalWithInvites(
+  proposal: MeetingProposal,
+  invitedRoleIds: string[],
+): MeetingPlan {
+  if (invitedRoleIds.length < MIN_ROLES) {
+    throw new Error(`Invite at least ${MIN_ROLES} experts to start the meeting`);
+  }
+  const invited = new Set(invitedRoleIds);
+  const roles = proposal.roles.filter((r) => invited.has(r.id));
+  if (roles.length !== invitedRoleIds.length) {
+    throw new Error("One or more invited experts are not in the proposal");
+  }
+  const turnSchedule = proposal.turnSchedule.filter((id) => invited.has(id));
+  const {
+    goalNeedsConfirmation: _g,
+    rosterNeedsConfirmation: _r,
+    chairMessage: _c,
+    id: _id,
+    ...rest
+  } = proposal;
+  void _g;
+  void _r;
+  void _c;
+  void _id;
+  return finalizeMeetingPlan({
+    ...rest,
+    roles,
+    turnSchedule,
+  });
 }
 
 export async function runBoardSession(userBrief: string) {

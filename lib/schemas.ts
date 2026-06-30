@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 import {
-  GLOSSARY_MAX_ENTRIES,
+  GLOSSARY_RESPONSE_SAFETY_CAP,
   MAX_BRIEF_CHARS,
   MAX_TAKEAWAY_CHARS,
   MAX_ON_DEMAND_EXPLAIN_CHARS,
@@ -92,7 +92,7 @@ const glossaryEntrySchema = z.object({
 export const glossarySchema = z.object({
   entries: z
     .array(glossaryEntrySchema)
-    .transform((entries) => entries.slice(0, GLOSSARY_MAX_ENTRIES)),
+    .transform((entries) => entries.slice(0, GLOSSARY_RESPONSE_SAFETY_CAP)),
 });
 
 export type GlossaryEntry = z.infer<typeof glossaryEntrySchema>;
@@ -200,6 +200,7 @@ export type ThreadProposalItem = {
   kind: "proposal";
   payload: MeetingProposal;
   status: "pending" | "approved";
+  invitedRoleIds?: string[];
 };
 
 export type ThreadStatusItem = {

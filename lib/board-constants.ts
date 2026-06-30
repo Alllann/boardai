@@ -12,8 +12,11 @@ export const MAX_BRIEF_CHARS = 12_000;
 
 export const ROLE_ID_REGEX = /^[a-z][a-z0-9_]{1,39}$/;
 
-/** Max glossary terms surfaced in the UI (model may overshoot; we clamp). */
-export const GLOSSARY_MAX_ENTRIES = 60;
+/** Max new glossary entries per incremental generation pass. */
+export const GLOSSARY_MAX_ENTRIES_PER_PASS = 12;
+
+/** Safety cap for a single model response (not a session total). */
+export const GLOSSARY_RESPONSE_SAFETY_CAP = 200;
 
 /** Chair briefing key takeaway bullet (model may overshoot; we clamp). */
 export const MAX_TAKEAWAY_CHARS = 280;

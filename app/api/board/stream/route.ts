@@ -14,6 +14,7 @@ type RequestBody = {
   action?: StreamAction["action"];
   message?: string;
   scheduleIndex?: number;
+  invitedRoleIds?: string[];
 };
 
 export async function POST(req: Request) {
@@ -32,6 +33,9 @@ export async function POST(req: Request) {
   const message = typeof parsed.message === "string" ? parsed.message.trim() : "";
   const scheduleIndex =
     typeof parsed.scheduleIndex === "number" ? parsed.scheduleIndex : 0;
+  const invitedRoleIds = Array.isArray(parsed.invitedRoleIds)
+    ? parsed.invitedRoleIds.filter((id): id is string => typeof id === "string")
+    : [];
 
   let userBrief = typeof parsed.brief === "string" ? parsed.brief.trim() : "";
 
@@ -92,7 +96,7 @@ export async function POST(req: Request) {
         } else {
           const streamAction: StreamAction =
             action === "approve_proposal"
-              ? { action: "approve_proposal" }
+              ? { action: "approve_proposal", invitedRoleIds }
               : action === "proposal_reply"
                 ? { action: "proposal_reply", message }
                 : action === "interrupt_discussion"

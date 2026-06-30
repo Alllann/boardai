@@ -7,8 +7,8 @@ import { ChatChairMessage } from "@/components/chat/ChatChairMessage";
 import { ChatComposer } from "@/components/chat/ChatComposer";
 import { ChatExpertsInvite } from "@/components/chat/ChatExpertsInvite";
 import { ChatProposalCard } from "@/components/chat/ChatProposalCard";
-import { ChatSystemBubble } from "@/components/chat/ChatSystemBubble";
 import { ChatUserBubble } from "@/components/chat/ChatUserBubble";
+import { ChairTypingIndicator } from "@/components/ChairTypingIndicator";
 import { DiscussionTurn } from "@/components/DiscussionTurn";
 import { DiscussionTypingIndicator } from "@/components/DiscussionTypingIndicator";
 import { ThreadHeader } from "@/components/shell/ThreadHeader";
@@ -22,7 +22,7 @@ import {
   buildTranscriptSnippet,
 } from "@/lib/explain-context";
 import { getMentionCandidates, loadSession } from "@/lib/session-store";
-import type { ThreadItem } from "@/lib/schemas";
+import type { ThreadItem, SessionTimelineEvent } from "@/lib/schemas";
 
 type Props = {
   sessionId: string;
@@ -31,6 +31,14 @@ type Props = {
 function isLegacyDiscussionCount(message: string): boolean {
   return /^Discussion · \d+ message/.test(message);
 }
+
+const LEGACY_STATUS_AS_CHAIR: Record<string, string> = {
+  "Chair is convening the board…": "I'm convening the board and reviewing your brief…",
+  "Chair is reviewing your brief…": "I'm reviewing your brief and putting together a roster for this session…",
+  "Inviting experts to the group…": "Starting the discussion with your invited experts…",
+  "Writing briefing…": "I'll wrap up with a briefing from this discussion…",
+  "Building glossary…": "I'm building a glossary from this session…",
+};
 
 export function BoardChatView({ sessionId }: Props) {
   const {
@@ -48,6 +56,7 @@ export function BoardChatView({ sessionId }: Props) {
   const [showJumpToBottom, setShowJumpToBottom] = useState(false);
   const [composerValue, setComposerValue] = useState("");
   const [glossaryExpanded, setGlossaryExpanded] = useState(false);
+  const [invitedRoleIds, setInvitedRoleIds] = useState<string[]>([]);
 
   const SCROLL_BOTTOM_THRESHOLD = 80;
 
@@ -83,6 +92,8 @@ export function BoardChatView({ sessionId }: Props) {
   const timeline = state?.timeline ?? [];
   const thread = state?.thread ?? [];
   const pendingProposal = state?.pendingProposal ?? null;
+  const streamingTurn = state?.streamingTurn ?? null;
+  const streamingChair = state?.streamingChair ?? null;
   const status = state?.status ?? "idle";
   const roundCount = state?.roundCount ?? 1;
   const mentionCandidates = useMemo(
@@ -112,18 +123,42 @@ export function BoardChatView({ sessionId }: Props) {
     };
   }, [brief, meetingPlan, turns, briefing]);
 
+  useEffect(() => {
+    if (pendingProposal) {
+      setInvitedRoleIds([]);
+    }
+  }, [pendingProposal?.id]);
+
   const discussionInProgress =
     loading && !!meetingPlan && !briefing && !pendingProposal;
 
   const nextSpeakerRole = useMemo(() => {
-    if (!discussionInProgress || !meetingPlan) return null;
+    if (!discussionInProgress || !meetingPlan || streamingTurn) return null;
     const completedInRound = thread.filter(
       (t) => t.kind === "expert" && t.roundId === roundCount,
     ).length;
     const nextRoleId = meetingPlan.turnSchedule[completedInRound];
     if (!nextRoleId) return null;
     return roleById.get(nextRoleId) ?? null;
-  }, [discussionInProgress, meetingPlan, thread, roundCount, roleById]);
+  }, [discussionInProgress, meetingPlan, thread, roundCount, roleById, streamingTurn]);
+
+  const showChairTyping = useMemo(() => {
+    if (!loading || streamingTurn || streamingChair) return false;
+    if (pendingProposal) return false;
+    if (!meetingPlan) return true;
+    if (!briefing && meetingPlan && turns.length >= meetingPlan.turnSchedule.length) {
+      return true;
+    }
+    return false;
+  }, [
+    loading,
+    streamingTurn,
+    streamingChair,
+    pendingProposal,
+    meetingPlan,
+    briefing,
+    turns.length,
+  ]);
 
   useEffect(() => {
     pinnedToBottomRef.current = true;
@@ -144,7 +179,15 @@ export function BoardChatView({ sessionId }: Props) {
     } else {
       checkScrollPosition();
     }
-  }, [turns.length, thread.length, loading, jumpToBottom, checkScrollPosition]);
+  }, [
+    turns.length,
+    thread.length,
+    loading,
+    jumpToBottom,
+    checkScrollPosition,
+    streamingTurn?.content.length,
+    streamingChair?.content.length,
+  ]);
 
   const copyText = async (label: string, text: string) => {
     try {
@@ -155,21 +198,6 @@ export function BoardChatView({ sessionId }: Props) {
   };
 
   const glossaryEntries = glossary?.entries ?? [];
-
-  const statusMessage = (() => {
-    if (!loading) return null;
-    if (pendingProposal) return null;
-    if (!meetingPlan) return "Chair is convening the board…";
-    if (turns.length === 0) return "Inviting experts to the group…";
-    if (!briefing) {
-      if (meetingPlan && turns.length < meetingPlan.turnSchedule.length) {
-        return null;
-      }
-      return "Writing briefing…";
-    }
-    if (!glossary) return "Building glossary…";
-    return null;
-  })();
 
   const composerEnabled =
     status === "awaiting_user" ||
@@ -255,11 +283,8 @@ export function BoardChatView({ sessionId }: Props) {
 
     if (item.kind === "status") {
       if (isLegacyDiscussionCount(item.message)) return null;
-      return (
-        <ChatSystemBubble key={key} variant="status">
-          {item.message}
-        </ChatSystemBubble>
-      );
+      const chairText = LEGACY_STATUS_AS_CHAIR[item.message] ?? item.message;
+      return <ChatChairMessage key={key} content={chairText} />;
     }
 
     if (item.kind === "proposal" && item.status === "pending" && pendingProposal) {
@@ -267,7 +292,9 @@ export function BoardChatView({ sessionId }: Props) {
         <ChatProposalCard
           key={key}
           proposal={pendingProposal}
-          onApprove={() => void approveProposal()}
+          invitedRoleIds={invitedRoleIds}
+          onInvitedChange={setInvitedRoleIds}
+          onApprove={() => void approveProposal(invitedRoleIds)}
           onSuggestChanges={handleSuggestChanges}
           loading={loading}
         />
@@ -325,14 +352,11 @@ export function BoardChatView({ sessionId }: Props) {
       );
     }
 
-    const preTurnEvents = timeline.filter((e) => e.afterTurnCount === 0);
+    const preTurnEvents = timeline.filter((e: SessionTimelineEvent) => e.afterTurnCount === 0);
     for (const ev of preTurnEvents) {
       if (isLegacyDiscussionCount(ev.message)) continue;
-      items.push(
-        <ChatSystemBubble key={ev.id} variant="status">
-          {ev.message}
-        </ChatSystemBubble>,
-      );
+      const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
+      items.push(<ChatChairMessage key={ev.id} content={chairText} />);
     }
 
     if (pendingProposal && status === "awaiting_user") {
@@ -340,7 +364,9 @@ export function BoardChatView({ sessionId }: Props) {
         <ChatProposalCard
           key="proposal"
           proposal={pendingProposal}
-          onApprove={() => void approveProposal()}
+          invitedRoleIds={invitedRoleIds}
+          onInvitedChange={setInvitedRoleIds}
+          onApprove={() => void approveProposal(invitedRoleIds)}
           onSuggestChanges={handleSuggestChanges}
           loading={loading}
         />,
@@ -352,14 +378,11 @@ export function BoardChatView({ sessionId }: Props) {
     }
 
     turns.forEach((t, i) => {
-      const turnEvents = timeline.filter((e) => e.afterTurnCount === i + 1);
+      const turnEvents = timeline.filter((e: SessionTimelineEvent) => e.afterTurnCount === i + 1);
       for (const ev of turnEvents) {
         if (isLegacyDiscussionCount(ev.message)) continue;
-        items.push(
-          <ChatSystemBubble key={ev.id} variant="status">
-            {ev.message}
-          </ChatSystemBubble>,
-        );
+        const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
+        items.push(<ChatChairMessage key={ev.id} content={chairText} />);
       }
       items.push(
         <DiscussionTurn
@@ -380,14 +403,13 @@ export function BoardChatView({ sessionId }: Props) {
       );
     });
 
-    const postTurnEvents = timeline.filter((e) => e.afterTurnCount === turns.length);
+    const postTurnEvents = timeline.filter(
+      (e: SessionTimelineEvent) => e.afterTurnCount === turns.length,
+    );
     for (const ev of postTurnEvents) {
       if (isLegacyDiscussionCount(ev.message)) continue;
-      items.push(
-        <ChatSystemBubble key={`post-${ev.id}`} variant="status">
-          {ev.message}
-        </ChatSystemBubble>,
-      );
+      const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
+      items.push(<ChatChairMessage key={`post-${ev.id}`} content={chairText} />);
     }
 
     if (briefing && baseExplainContext) {
@@ -466,13 +488,34 @@ export function BoardChatView({ sessionId }: Props) {
             <ul className="mx-auto flex max-w-3xl flex-col gap-1">
               {chatItems}
 
+              {streamingTurn ? (
+                <DiscussionTurn
+                  key={`streaming-${streamingTurn.id}`}
+                  turn={{
+                    id: streamingTurn.id,
+                    roleId: streamingTurn.roleId,
+                    roleName: streamingTurn.roleName,
+                    content: streamingTurn.content || "…",
+                  }}
+                  role={roleById.get(streamingTurn.roleId)}
+                  glossaryEntries={glossaryEntries}
+                  streaming
+                />
+              ) : null}
+
+              {streamingChair ? (
+                <ChatChairMessage
+                  key={`streaming-chair-${streamingChair.id}`}
+                  content={streamingChair.content || "…"}
+                  streaming
+                />
+              ) : null}
+
               {nextSpeakerRole ? (
                 <DiscussionTypingIndicator role={nextSpeakerRole} />
               ) : null}
 
-              {statusMessage ? (
-                <ChatSystemBubble variant="status">{statusMessage}</ChatSystemBubble>
-              ) : null}
+              {showChairTyping ? <ChairTypingIndicator /> : null}
             </ul>
             <div ref={chatEndRef} className="h-1" aria-hidden />
           </div>

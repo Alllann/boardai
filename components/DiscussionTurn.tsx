@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ExpertAvatar } from "@/components/ExpertAvatar";
 import { ExpertProfilePopover } from "@/components/ExpertProfilePopover";
+import { ChatParticipantTurn } from "@/components/chat/ChatParticipantTurn";
 import { GlossaryText } from "@/components/GlossaryText";
 import {
   SelectableExplain,
@@ -17,6 +18,7 @@ type Props = {
   glossaryEntries: GlossaryEntry[];
   explainContext?: ExplainContextParams;
   explainDisabled?: boolean;
+  streaming?: boolean;
 };
 
 export function DiscussionTurn({
@@ -25,6 +27,7 @@ export function DiscussionTurn({
   glossaryEntries,
   explainContext,
   explainDisabled = false,
+  streaming = false,
 }: Props) {
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -44,44 +47,46 @@ export function DiscussionTurn({
     : undefined;
 
   return (
-    <li className="flex items-end gap-3 py-0.5">
-      <div className="relative shrink-0">
-        <ExpertAvatar
-          role={fallbackRole}
-          size="md"
-          onClick={() => setProfileOpen((v) => !v)}
-        />
-        <ExpertProfilePopover
-          role={fallbackRole}
-          open={profileOpen}
-          onClose={() => setProfileOpen(false)}
-        />
-      </div>
-
-      <div className="max-w-[min(36rem,92%)] rounded-2xl rounded-tl-sm border border-zinc-200 bg-white px-3.5 py-2.5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900/60">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-            {fallbackRole.title}
-          </p>
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Board seat
-          </p>
-        </div>
-        {context ? (
-          <SelectableExplain
-            text={turn.content}
-            glossaryEntries={glossaryEntries}
-            context={context}
-            disabled={explainDisabled}
-            markdown
-            className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+    <ChatParticipantTurn
+      avatar={
+        <div className="relative">
+          <ExpertAvatar
+            role={fallbackRole}
+            size="md"
+            onClick={() => setProfileOpen((v) => !v)}
           />
-        ) : (
-          <div className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
-            <GlossaryText text={turn.content} entries={glossaryEntries} />
-          </div>
-        )}
-      </div>
-    </li>
+          <ExpertProfilePopover
+            role={fallbackRole}
+            open={profileOpen}
+            onClose={() => setProfileOpen(false)}
+          />
+        </div>
+      }
+      title={fallbackRole.title}
+      subtitle="Board seat"
+    >
+      {streaming ? (
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+          {turn.content}
+          <span
+            className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-zinc-400 align-middle dark:bg-zinc-500"
+            aria-hidden
+          />
+        </p>
+      ) : context ? (
+        <SelectableExplain
+          text={turn.content}
+          glossaryEntries={glossaryEntries}
+          context={context}
+          disabled={explainDisabled}
+          markdown
+          className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+        />
+      ) : (
+        <div className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+          <GlossaryText text={turn.content} entries={glossaryEntries} />
+        </div>
+      )}
+    </ChatParticipantTurn>
   );
 }

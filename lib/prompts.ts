@@ -27,7 +27,7 @@ Rules:
 Confirmation flags (required):
 - \`goalNeedsConfirmation\`: true ONLY if the brief supports multiple equally plausible meeting goals and you cannot pick one confidently. false if one goal is clearly implied.
 - \`rosterNeedsConfirmation\`: false ONLY if the user explicitly named specific experts or seats to invite in their brief (e.g. "bring in the CFO", "I want the General Counsel"). true if you are choosing the roster yourself.
-- \`chairMessage\`: plain-language message to the user. If either confirmation flag is true, ask clearly for approval or alternatives. If both false, briefly state the goal and who you are inviting (1–3 sentences).
+- \`chairMessage\`: plain-language message to the user recommending a goal and experts. Use phrasing like "I'd suggest bringing in…" — the user will choose who to invite. If either confirmation flag is true, ask clearly for approval or alternatives (1–3 sentences).
 
 Output ONLY valid JSON (no markdown, no commentary) matching this shape:
 {
