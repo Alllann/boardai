@@ -21,6 +21,11 @@ import {
   buildMeetingGoal,
   buildTranscriptSnippet,
 } from "@/lib/explain-context";
+import {
+  getContinuationFlags,
+  getGroupFlags,
+  getThreadSpeaker,
+} from "@/lib/chat-grouping";
 import { getMentionCandidates, loadSession } from "@/lib/session-store";
 import type { ThreadItem, SessionTimelineEvent } from "@/lib/schemas";
 
@@ -80,7 +85,7 @@ export function BoardChatView({ sessionId }: Props) {
   }, []);
 
   const session = loadSession(sessionId);
-  const title = session?.title ?? "Board session";
+  const title = state?.title ?? session?.title ?? "Board session";
 
   const meetingPlan = state?.meetingPlan ?? null;
   const turns = useMemo(() => state?.turns ?? [], [state?.turns]);
@@ -268,8 +273,13 @@ export function BoardChatView({ sessionId }: Props) {
     }
   };
 
-  const renderThreadItem = (item: ThreadItem, index: number) => {
+  const renderThreadItem = (
+    item: ThreadItem,
+    index: number,
+    speakers: (string | null)[],
+  ) => {
     const key = threadItemKey(item, index);
+    const group = getGroupFlags(speakers, index);
 
     if (item.kind === "user") {
       return (
@@ -277,6 +287,7 @@ export function BoardChatView({ sessionId }: Props) {
           key={key}
           text={item.content}
           mentionCandidates={mentionCandidates}
+          showName={group.showName}
         />
       );
     }
@@ -284,7 +295,14 @@ export function BoardChatView({ sessionId }: Props) {
     if (item.kind === "status") {
       if (isLegacyDiscussionCount(item.message)) return null;
       const chairText = LEGACY_STATUS_AS_CHAIR[item.message] ?? item.message;
-      return <ChatChairMessage key={key} content={chairText} />;
+      return (
+        <ChatChairMessage
+          key={key}
+          content={chairText}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
+        />
+      );
     }
 
     if (item.kind === "proposal" && item.status === "pending" && pendingProposal) {
@@ -317,12 +335,21 @@ export function BoardChatView({ sessionId }: Props) {
               : undefined
           }
           explainDisabled={explainDisabled}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
         />
       );
     }
 
     if (item.kind === "chair") {
-      return <ChatChairMessage key={key} content={item.content} />;
+      return (
+        <ChatChairMessage
+          key={key}
+          content={item.content}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
+        />
+      );
     }
 
     if (item.kind === "briefing" && baseExplainContext) {
@@ -342,12 +369,17 @@ export function BoardChatView({ sessionId }: Props) {
 
   const renderLegacyTimeline = () => {
     const items: ReactNode[] = [];
+    let lastSpeaker: string | null = null;
+
     if (brief) {
+      const group = getContinuationFlags(lastSpeaker, "owner");
+      lastSpeaker = "owner";
       items.push(
         <ChatUserBubble
           key="brief"
           text={brief}
           mentionCandidates={mentionCandidates}
+          showName={group.showName}
         />,
       );
     }
@@ -356,10 +388,20 @@ export function BoardChatView({ sessionId }: Props) {
     for (const ev of preTurnEvents) {
       if (isLegacyDiscussionCount(ev.message)) continue;
       const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
-      items.push(<ChatChairMessage key={ev.id} content={chairText} />);
+      const group = getContinuationFlags(lastSpeaker, "chair");
+      lastSpeaker = "chair";
+      items.push(
+        <ChatChairMessage
+          key={ev.id}
+          content={chairText}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
+        />,
+      );
     }
 
     if (pendingProposal && status === "awaiting_user") {
+      lastSpeaker = null;
       items.push(
         <ChatProposalCard
           key="proposal"
@@ -374,6 +416,7 @@ export function BoardChatView({ sessionId }: Props) {
     }
 
     if (meetingPlan) {
+      lastSpeaker = null;
       items.push(<ChatExpertsInvite key="invite" plan={meetingPlan} />);
     }
 
@@ -382,8 +425,20 @@ export function BoardChatView({ sessionId }: Props) {
       for (const ev of turnEvents) {
         if (isLegacyDiscussionCount(ev.message)) continue;
         const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
-        items.push(<ChatChairMessage key={ev.id} content={chairText} />);
+        const group = getContinuationFlags(lastSpeaker, "chair");
+        lastSpeaker = "chair";
+        items.push(
+          <ChatChairMessage
+            key={ev.id}
+            content={chairText}
+            showAvatar={group.showAvatar}
+            showName={group.showName}
+          />,
+        );
       }
+      const speaker = `expert:${t.roleId}`;
+      const group = getContinuationFlags(lastSpeaker, speaker);
+      lastSpeaker = speaker;
       items.push(
         <DiscussionTurn
           key={t.id}
@@ -399,6 +454,8 @@ export function BoardChatView({ sessionId }: Props) {
               : undefined
           }
           explainDisabled={explainDisabled}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
         />,
       );
     });
@@ -409,10 +466,20 @@ export function BoardChatView({ sessionId }: Props) {
     for (const ev of postTurnEvents) {
       if (isLegacyDiscussionCount(ev.message)) continue;
       const chairText = LEGACY_STATUS_AS_CHAIR[ev.message] ?? ev.message;
-      items.push(<ChatChairMessage key={`post-${ev.id}`} content={chairText} />);
+      const group = getContinuationFlags(lastSpeaker, "chair");
+      lastSpeaker = "chair";
+      items.push(
+        <ChatChairMessage
+          key={`post-${ev.id}`}
+          content={chairText}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
+        />,
+      );
     }
 
     if (briefing && baseExplainContext) {
+      lastSpeaker = null;
       items.push(
         <ChatBriefingCard
           key="briefing"
@@ -430,6 +497,7 @@ export function BoardChatView({ sessionId }: Props) {
   const renderThreadTimeline = () => {
     const items: ReactNode[] = [];
     let inviteShown = false;
+    const speakers = thread.map(getThreadSpeaker);
 
     for (let index = 0; index < thread.length; index++) {
       const item = thread[index]!;
@@ -437,7 +505,7 @@ export function BoardChatView({ sessionId }: Props) {
         items.push(<ChatExpertsInvite key="invite" plan={meetingPlan} />);
         inviteShown = true;
       }
-      const node = renderThreadItem(item, index);
+      const node = renderThreadItem(item, index, speakers);
       if (node) items.push(node);
     }
 
@@ -458,6 +526,30 @@ export function BoardChatView({ sessionId }: Props) {
 
   const useThread = thread.length > 0;
   const chatItems = useThread ? renderThreadTimeline() : renderLegacyTimeline();
+
+  const lastThreadSpeaker =
+    thread.length > 0 ? getThreadSpeaker(thread[thread.length - 1]!) : null;
+
+  const streamingTurnGroup = streamingTurn
+    ? getContinuationFlags(lastThreadSpeaker, `expert:${streamingTurn.roleId}`)
+    : null;
+  const streamingChairGroup = streamingChair
+    ? getContinuationFlags(lastThreadSpeaker, "chair")
+    : null;
+  const nextSpeakerGroup = nextSpeakerRole
+    ? getContinuationFlags(
+        streamingTurn
+          ? `expert:${streamingTurn.roleId}`
+          : lastThreadSpeaker,
+        `expert:${nextSpeakerRole.id}`,
+      )
+    : null;
+  const chairTypingGroup = showChairTyping
+    ? getContinuationFlags(
+        streamingChair ? "chair" : streamingTurn ? `expert:${streamingTurn.roleId}` : lastThreadSpeaker,
+        "chair",
+      )
+    : null;
 
   const composerPlaceholder = discussionInProgress
     ? "Join the discussion…"
@@ -500,6 +592,8 @@ export function BoardChatView({ sessionId }: Props) {
                   role={roleById.get(streamingTurn.roleId)}
                   glossaryEntries={glossaryEntries}
                   streaming
+                  showAvatar={streamingTurnGroup?.showAvatar ?? true}
+                  showName={streamingTurnGroup?.showName ?? true}
                 />
               ) : null}
 
@@ -508,14 +602,25 @@ export function BoardChatView({ sessionId }: Props) {
                   key={`streaming-chair-${streamingChair.id}`}
                   content={streamingChair.content || "…"}
                   streaming
+                  showAvatar={streamingChairGroup?.showAvatar ?? true}
+                  showName={streamingChairGroup?.showName ?? true}
                 />
               ) : null}
 
               {nextSpeakerRole ? (
-                <DiscussionTypingIndicator role={nextSpeakerRole} />
+                <DiscussionTypingIndicator
+                  role={nextSpeakerRole}
+                  showAvatar={nextSpeakerGroup?.showAvatar ?? true}
+                  showName={nextSpeakerGroup?.showName ?? true}
+                />
               ) : null}
 
-              {showChairTyping ? <ChairTypingIndicator /> : null}
+              {showChairTyping ? (
+                <ChairTypingIndicator
+                  showAvatar={chairTypingGroup?.showAvatar ?? true}
+                  showName={chairTypingGroup?.showName ?? true}
+                />
+              ) : null}
             </ul>
             <div ref={chatEndRef} className="h-1" aria-hidden />
           </div>

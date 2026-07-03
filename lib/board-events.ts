@@ -68,6 +68,7 @@ export type StreamContext = {
   glossary: Glossary | null;
   roundCount: number;
   pendingProposal: MeetingProposal | null;
+  userMessages: { id: string; content: string; timestamp: number; roundId: number }[];
 };
 
 export type StreamingTurnState = {

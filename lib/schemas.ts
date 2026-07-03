@@ -154,6 +154,8 @@ export const meetingProposalSchema = meetingPlanSchema
     goalNeedsConfirmation: z.boolean(),
     rosterNeedsConfirmation: z.boolean(),
     chairMessage: z.string().min(1).max(1200),
+    /** Short sidebar label (4–8 words) summarizing the owner's question. */
+    sessionTitle: z.string().min(1).max(80),
   })
   .refine(
     (p) => new Set(p.roles.map((r) => r.id)).size === p.roles.length,

@@ -12,6 +12,7 @@ export function SidebarItem({ title, active, running, onClick }: Props) {
     <button
       type="button"
       onClick={onClick}
+      title={title}
       className={`group flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition ${
         active
           ? "bg-[var(--surface-hover)] text-[var(--text-primary)]"

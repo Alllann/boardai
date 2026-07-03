@@ -4,9 +4,6 @@ export const MIN_ROLES = 3;
 export const MAX_ROLES = 6;
 /** Max turns in schedule (latency / cost guardrail). */
 export const MAX_TURNS = 14;
-/** Default target turns when prompting Chair (Chair may emit fewer; we pad in code only if needed — prefer Chair to hit range). */
-export const TARGET_TURNS_MIN = 10;
-export const TARGET_TURNS_MAX = 12;
 /** User brief max length (characters). */
 export const MAX_BRIEF_CHARS = 12_000;
 

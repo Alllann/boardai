@@ -1,11 +1,5 @@
 import { BOARD_AUDIENCE_INSTRUCTIONS, EXPERT_STRUCTURE_RULES } from "./board-audience";
-import {
-  MAX_ROLES,
-  MAX_TURNS,
-  MIN_ROLES,
-  TARGET_TURNS_MAX,
-  TARGET_TURNS_MIN,
-} from "./board-constants";
+import { MAX_ROLES, MAX_TURNS, MIN_ROLES } from "./board-constants";
 
 export function chairMeetingPlanPrompt(userBrief: string): string {
   return `You are the Chair of an advisory board. Your job in THIS message only is to DESIGN the meeting: pick the minimal expert roster and a turn-by-turn speaking schedule for the brief below.
@@ -20,27 +14,29 @@ Rules:
 - \`title\` is the expert's board seat / expert title — how you would introduce them. Use a recognizable role name, NOT a topic label (avoid "Unit economics", "Regulatory AI" as titles).
 - \`mandate\` is their detailed, non-overlapping scope task based on their expertise. Put functional/topic detail in mandate, not in title. Mandates should steer experts to stress-test in language a non-specialist board member can follow.
 - \`background\`: one credible sentence of professional background per expert (e.g. "Former SaaS CFO; 15 years scaling ARR through downturns"). This is shown in the UI profile — make it specific and believable, not generic.
-- Create \`turnSchedule\`: an ordered array of length between ${TARGET_TURNS_MIN} and ${TARGET_TURNS_MAX} (inclusive) of \`roleId\` strings. Repeat ids where a real meeting would bring someone back (objections, follow-ups). Order should create cross-talk and tension—not a rigid "everyone speaks once" go-around.
+- Create \`turnSchedule\`: an ordered array with exactly one entry per expert (\`roleId\` appears once). Order should create a logical flow (e.g. finance before legal on a deal question)—each expert speaks once in round one.
 - Include \`meetingGoal\`: one sentence on what this session must decide or stress-test based on user brief. Do not create a goal that is not directly implied by user brief.
-- Optional \`chairNotesForFacilitator\`: short private notes for the facilitator. Include: require accessible language and clear reasoning in normal prose (what they conclude, why, and why it matters — never label steps or use arrows); push for at least one sustained disagreement before the last third of turns.
+- Optional \`chairNotesForFacilitator\`: short private notes for the facilitator. Include: require accessible language and clear reasoning in normal prose (what they conclude, why, and why it matters — never label steps or use arrows); each expert should stress-test the owner's brief from their seat.
 
 Confirmation flags (required):
 - \`goalNeedsConfirmation\`: true ONLY if the brief supports multiple equally plausible meeting goals and you cannot pick one confidently. false if one goal is clearly implied.
 - \`rosterNeedsConfirmation\`: false ONLY if the user explicitly named specific experts or seats to invite in their brief (e.g. "bring in the CFO", "I want the General Counsel"). true if you are choosing the roster yourself.
-- \`chairMessage\`: plain-language message to the user recommending a goal and experts. Use phrasing like "I'd suggest bringing in…" — the user will choose who to invite. If either confirmation flag is true, ask clearly for approval or alternatives (1–3 sentences).
+- \`sessionTitle\`: short sidebar label — **4 to 8 words**, noun-phrase style (e.g. "AI macro quant strategy", "B2B launch in Germany"). NOT a sentence, NOT the meeting goal, NOT words like "Determine whether…". No trailing punctuation.
+- \`chairMessage\`: At most 2 short sentences to the owner. Briefly state what you propose to stress-test and that suggested experts are below—do not list expert names or repeat \`meetingGoal\` verbatim. Use phrasing like "I'd suggest we focus on…" If either confirmation flag is true, ask for approval in one sentence.
 
 Output ONLY valid JSON (no markdown, no commentary) matching this shape:
 {
   "roles": [{ "id": "string", "title": "string", "mandate": "string", "background": "string" }],
   "turnSchedule": ["role_id", "..."],
   "meetingGoal": "string",
+  "sessionTitle": "string",
   "chairNotesForFacilitator": "optional string",
   "goalNeedsConfirmation": boolean,
   "rosterNeedsConfirmation": boolean,
   "chairMessage": "string"
 }
 
-Hard limits enforced downstream: at most ${MAX_ROLES} roles, at most ${MAX_TURNS} total scheduled turns (your schedule must stay within ${TARGET_TURNS_MIN}-${TARGET_TURNS_MAX} as requested).`;
+Hard limits enforced downstream: at most ${MAX_ROLES} roles, exactly one scheduled turn per role (schedule length must equal roles length).`;
 }
 
 export function chairMeetingPlanRetryPrompt(
@@ -77,7 +73,9 @@ If the user clearly approved (e.g. "looks good", "start", "proceed"), set both g
 
 If they requested changes, update meetingGoal and/or roles/turnSchedule accordingly. Re-evaluate confirmation flags: after addressing their feedback, set flags to false unless still genuinely ambiguous.
 
-Output ONLY valid JSON (same shape as meeting plan proposal) with goalNeedsConfirmation, rosterNeedsConfirmation, and chairMessage.`;
+Always include \`sessionTitle\`: 4 to 8 words, noun-phrase style (not a sentence fragment, not the meeting goal verbatim). Example: "AI macro quant strategy" — never "Determine whether an AI-based macro and…".
+
+Output ONLY valid JSON (same shape as meeting plan proposal) with sessionTitle, goalNeedsConfirmation, rosterNeedsConfirmation, and chairMessage.`;
 }
 
 export function expertTurnPrompt(params: {
@@ -87,6 +85,7 @@ export function expertTurnPrompt(params: {
   transcriptLines: string;
   chairNotes?: string;
   userQuestion?: string;
+  roundGoal?: string;
 }): string {
   const others =
     params.otherExperts.length > 0
@@ -95,17 +94,21 @@ export function expertTurnPrompt(params: {
   const notes = params.chairNotes
     ? `\nChair guidance for this meeting (internal): ${params.chairNotes}\n`
     : "";
+  const roundGoal = params.roundGoal
+    ? `\nThis round's focus: ${params.roundGoal}\n`
+    : "";
   const directAsk = params.userQuestion
-    ? `\nThe owner is addressing you directly:\n"${params.userQuestion}"\nAnswer this directly in your message.\n`
+    ? `\nThe owner just asked (you MUST answer this — do not ignore it or only react to other experts):\n"${params.userQuestion}"\nOpen by addressing the owner's question directly, then bring in your expert view.\n`
     : "";
   return `You are ONLY the expert: "${params.expertTitle}".
 Your mandate: ${params.mandate}
 ${notes}
+${roundGoal}
 ${BOARD_AUDIENCE_INSTRUCTIONS}
 ${directAsk}
 Other participants in this board (reference them by TITLE when relevant): ${others}
 
-Discussion so far:
+Discussion so far (includes the owner's brief and any owner messages — treat these as what you must respond to):
 ---
 ${params.transcriptLines}
 ---
@@ -113,7 +116,7 @@ ${params.transcriptLines}
 Write ONE message using markdown for readability:
 ${EXPERT_STRUCTURE_RULES}
 
-Keep total length ~150–250 words. Do NOT speak for other roles or narrate meeting meta.`;
+Your message MUST engage with the owner's brief or latest owner message — not only with other experts. Keep total length ~150–250 words. Do NOT speak for other roles or narrate meeting meta.`;
 }
 
 export function expertDirectReplyPrompt(params: {
@@ -229,7 +232,7 @@ Owner's message:
 
 Choose ONE action:
 - \`expert_direct\`: owner @mentioned or clearly directed a question to ONE expert — set targetRoleId to that expert's id.
-- \`follow_up_round\`: owner wants another full discussion round (e.g. "run another round", "debate X", "bring everyone back on Y") — set followUpGoal and turnSchedule (reuse role ids from plan, ${TARGET_TURNS_MIN}-${TARGET_TURNS_MAX} turns).
+- \`follow_up_round\`: owner wants another full discussion round (e.g. "run another round", "debate X", "bring everyone back on Y") — set followUpGoal and turnSchedule with exactly one entry per role (same length as roles array).
 - \`chair_reply\`: owner asked you a summary/clarification that you can answer without a new round — set chairReply.
 - \`revise_roster\`: owner wants new experts added — set newRoles (full role objects) and followUpGoal; may lead to a round after approval.
 

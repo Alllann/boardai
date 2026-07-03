@@ -14,22 +14,60 @@ type Props = {
   entries: GlossaryEntry[];
   highlights: ExplainHighlight[];
   pendingHighlight?: TextRange | null;
+  textOffset?: number;
   onExplainHighlightClick?: (highlight: ExplainHighlight, element: HTMLElement) => void;
   className?: string;
 };
+
+function shiftHighlights(
+  highlights: ExplainHighlight[],
+  pendingHighlight: TextRange | null | undefined,
+  textOffset: number,
+  textLength: number,
+): { highlights: ExplainHighlight[]; pendingHighlight: TextRange | null } {
+  const chunkStart = textOffset;
+  const chunkEnd = textOffset + textLength;
+
+  const localHighlights = highlights
+    .filter((h) => h.end > chunkStart && h.start < chunkEnd)
+    .map((h) => ({
+      ...h,
+      start: Math.max(0, h.start - chunkStart),
+      end: Math.min(textLength, h.end - chunkStart),
+    }));
+
+  let localPending: TextRange | null = null;
+  if (
+    pendingHighlight &&
+    pendingHighlight.end > chunkStart &&
+    pendingHighlight.start < chunkEnd
+  ) {
+    localPending = {
+      start: Math.max(0, pendingHighlight.start - chunkStart),
+      end: Math.min(textLength, pendingHighlight.end - chunkStart),
+    };
+  }
+
+  return { highlights: localHighlights, pendingHighlight: localPending };
+}
 
 export function AnnotatedText({
   text,
   entries,
   highlights,
   pendingHighlight,
+  textOffset = 0,
   onExplainHighlightClick,
   className,
 }: Props) {
   const baseId = useId();
+  const { highlights: localHighlights, pendingHighlight: localPending } = useMemo(
+    () => shiftHighlights(highlights, pendingHighlight, textOffset, text.length),
+    [highlights, pendingHighlight, textOffset, text.length],
+  );
   const segments = useMemo(
-    () => buildAnnotatedSegments(text, entries, highlights, pendingHighlight),
-    [text, entries, highlights, pendingHighlight],
+    () => buildAnnotatedSegments(text, entries, localHighlights, localPending),
+    [text, entries, localHighlights, localPending],
   );
   const [openGlossaryKey, setOpenGlossaryKey] = useState<string | null>(null);
 

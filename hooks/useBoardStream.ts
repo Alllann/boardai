@@ -16,6 +16,11 @@ import {
   syncTurnToThread,
   type BoardSession,
 } from "@/lib/session-store";
+import {
+  isTruncatedSentenceFragment,
+  PLACEHOLDER_SESSION_TITLE,
+  resolveSessionTitle,
+} from "@/lib/session-title";
 import type {
   ChairBriefing,
   Glossary,
@@ -27,6 +32,7 @@ import type {
 } from "@/lib/schemas";
 
 export type StreamState = {
+  title: string;
   brief: string;
   loading: boolean;
   error: string | null;
@@ -54,6 +60,7 @@ function sessionToState(
   },
 ): StreamState {
   return {
+    title: session.title,
     brief: session.brief,
     loading: streaming || session.status === "running",
     error: session.error,
@@ -82,6 +89,7 @@ function buildStreamContext(session: BoardSession): StreamContext {
     glossary: session.glossary,
     roundCount: session.roundCount,
     pendingProposal: session.pendingProposal,
+    userMessages: session.userMessages,
   };
 }
 
@@ -162,16 +170,17 @@ export function useBoardStream(sessionId: string) {
                 payload: ev.payload,
                 status: "pending",
               };
+              const threadWithoutPendingProposal = s.thread.filter(
+                (t) => !(t.kind === "proposal" && t.status === "pending"),
+              );
+              const title = resolveSessionTitle(s.brief, ev.payload);
               patchSession(sessionId, {
                 pendingProposal: ev.payload,
                 status: "awaiting_user",
                 phase: "kickstart",
-                thread: [...s.thread, proposalItem],
+                title,
+                thread: [...threadWithoutPendingProposal, proposalItem],
               });
-              appendChairThreadMessage(
-                sessionId,
-                "I'm reviewing your brief and putting together a roster for this session…",
-              );
               break;
             }
             case "awaiting_user":
@@ -185,12 +194,21 @@ export function useBoardStream(sessionId: string) {
                 "Starting the discussion with your invited experts…",
                 roundId,
               );
+              const title =
+                s.title === PLACEHOLDER_SESSION_TITLE ||
+                !s.title.trim() ||
+                isTruncatedSentenceFragment(s.title)
+                  ? resolveSessionTitle(s.brief, {
+                      sessionTitle: s.pendingProposal?.sessionTitle,
+                    })
+                  : s.title;
               patchSession(sessionId, {
                 meetingPlan: ev.payload,
                 pendingProposal: null,
                 phase: roundId > 1 ? "follow_up" : "discussion",
                 roundCount: Math.max(s.roundCount, roundId),
                 status: "running",
+                title,
               });
               break;
             }
@@ -259,7 +277,6 @@ export function useBoardStream(sessionId: string) {
               };
               patchSession(sessionId, {
                 briefing: ev.payload,
-                title: ev.payload.headline,
                 thread: [...(loadSession(sessionId)?.thread ?? s.thread), briefingItem],
               });
               break;
@@ -392,6 +409,10 @@ export function useBoardStream(sessionId: string) {
         thread: [...current.thread, userItem],
         status: "running",
       });
+      appendChairThreadMessage(
+        sessionId,
+        "I'll revise the roster based on your feedback…",
+      );
       bump();
 
       await consumeStream({
@@ -461,8 +482,16 @@ export function useBoardStream(sessionId: string) {
         roundId,
       };
 
+      const userMsg = {
+        id: userItem.id,
+        content: userItem.content,
+        timestamp: userItem.timestamp,
+        roundId,
+      };
+
       patchSession(sessionId, {
         thread: [...current.thread, userItem],
+        userMessages: [...current.userMessages, userMsg],
         status: "running",
         phase: "discussion",
       });

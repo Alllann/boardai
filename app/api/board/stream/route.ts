@@ -145,5 +145,8 @@ function parseStreamContext(body: unknown): StreamContext | undefined {
     roundCount: typeof o.roundCount === "number" ? o.roundCount : 0,
     pendingProposal:
       (o.pendingProposal as StreamContext["pendingProposal"]) ?? null,
+    userMessages: Array.isArray(o.userMessages)
+      ? (o.userMessages as StreamContext["userMessages"])
+      : [],
   };
 }

@@ -22,7 +22,7 @@ export function ChatExpertsInvite({ plan }: Props) {
         title="Chair"
         subtitle="Facilitator"
       >
-        <p className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+        <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           You invited {count} expert{count === 1 ? "" : "s"} to the group.
         </p>
         <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">

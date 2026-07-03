@@ -2,16 +2,28 @@
 
 import { ChairAvatar } from "@/components/ChairAvatar";
 import { ChatParticipantTurn } from "@/components/chat/ChatParticipantTurn";
+import type { ChatGroupFlags } from "@/lib/chat-grouping";
 
 type Props = {
   content: string;
   streaming?: boolean;
-};
+} & ChatGroupFlags;
 
-export function ChatChairMessage({ content, streaming = false }: Props) {
+export function ChatChairMessage({
+  content,
+  streaming = false,
+  showAvatar = true,
+  showName = true,
+}: Props) {
   return (
-    <ChatParticipantTurn avatar={<ChairAvatar size="md" />} title="Chair" subtitle="Facilitator">
-      <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+    <ChatParticipantTurn
+      avatar={<ChairAvatar size="md" />}
+      title="Chair"
+      subtitle="Facilitator"
+      showAvatar={showAvatar}
+      showName={showName}
+    >
+      <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
         {content}
         {streaming ? (
           <span

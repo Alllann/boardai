@@ -217,7 +217,8 @@ export function SelectableExplain({
       const resolvedOffsets =
         offsets ??
         (() => {
-          const idx = text.indexOf(trimmed);
+          const visibleText = selectableRef.current?.textContent ?? text;
+          const idx = visibleText.indexOf(trimmed);
           return idx >= 0
             ? { start: idx, end: idx + trimmed.length }
             : null;
@@ -467,9 +468,10 @@ export function SelectableExplain({
     ) : null;
 
   const annotatedRenderer = useCallback(
-    (chunk: string) => (
+    (chunk: string, chunkStart: number) => (
       <AnnotatedText
         text={chunk}
+        textOffset={chunkStart}
         entries={glossaryEntries}
         highlights={highlights}
         pendingHighlight={loadingHighlight}

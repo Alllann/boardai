@@ -11,6 +11,7 @@ import {
   type ExplainContextParams,
 } from "@/components/SelectableExplain";
 import type { GlossaryEntry, MeetingPlan, TranscriptTurn } from "@/lib/schemas";
+import type { ChatGroupFlags } from "@/lib/chat-grouping";
 
 type Props = {
   turn: TranscriptTurn;
@@ -19,7 +20,7 @@ type Props = {
   explainContext?: ExplainContextParams;
   explainDisabled?: boolean;
   streaming?: boolean;
-};
+} & ChatGroupFlags;
 
 export function DiscussionTurn({
   turn,
@@ -28,6 +29,8 @@ export function DiscussionTurn({
   explainContext,
   explainDisabled = false,
   streaming = false,
+  showAvatar = true,
+  showName = true,
 }: Props) {
   const [profileOpen, setProfileOpen] = useState(false);
 
@@ -64,9 +67,11 @@ export function DiscussionTurn({
       }
       title={fallbackRole.title}
       subtitle="Board seat"
+      showAvatar={showAvatar}
+      showName={showName}
     >
       {streaming ? (
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+        <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           {turn.content}
           <span
             className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-zinc-400 align-middle dark:bg-zinc-500"
@@ -80,10 +85,10 @@ export function DiscussionTurn({
           context={context}
           disabled={explainDisabled}
           markdown
-          className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+          className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
         />
       ) : (
-        <div className="mt-2 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+        <div className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
           <GlossaryText text={turn.content} entries={glossaryEntries} />
         </div>
       )}

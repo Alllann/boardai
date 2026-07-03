@@ -8,6 +8,13 @@ import type {
   ThreadItem,
   TranscriptTurn,
 } from "./schemas";
+import {
+  isBriefDerivedTitle,
+  isTruncatedSentenceFragment,
+  normalizeSessionTitle,
+  PLACEHOLDER_SESSION_TITLE,
+  resolveSessionTitle,
+} from "./session-title";
 
 export type SessionStatus =
   | "idle"
@@ -51,16 +58,13 @@ export const SIDEBAR_COLLAPSED_KEY = "boardai:sidebar-collapsed";
 export const SESSIONS_CHANGED_EVENT = "boardai:sessions-changed";
 
 const MAX_SESSIONS = 30;
-const TITLE_MAX = 48;
 
 function sessionKey(id: string): string {
   return `${SESSION_KEY_PREFIX}${id}`;
 }
 
 export function truncateTitle(text: string): string {
-  const t = text.trim();
-  if (t.length <= TITLE_MAX) return t;
-  return `${t.slice(0, TITLE_MAX - 1).trimEnd()}…`;
+  return normalizeSessionTitle(text);
 }
 
 export function createSessionId(): string {
@@ -112,7 +116,12 @@ export function notifySessionsChanged(): void {
 }
 
 export function listSessionSummaries(): SessionSummary[] {
-  return readIndex().sort((a, b) => b.updatedAt - a.updatedAt);
+  return readIndex()
+    .map((entry) => {
+      const session = loadSession(entry.id);
+      return session ? toSummary(session) : entry;
+    })
+    .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
 /** Normalize legacy sessions missing new fields. */
@@ -152,10 +161,30 @@ export function migrateSession(raw: Record<string, unknown>): BoardSession {
     }
   }
 
+  const brief = raw.brief as string;
+  let title = raw.title as string;
+  const pendingProposal = (raw.pendingProposal as MeetingProposal | null) ?? null;
+  const meetingPlan = (raw.meetingPlan as MeetingPlan | null) ?? null;
+  const proposalFromThread = migratedThread.find(
+    (item): item is Extract<ThreadItem, { kind: "proposal" }> => item.kind === "proposal",
+  )?.payload;
+  const titleSource = pendingProposal ?? proposalFromThread ?? null;
+  if (
+    isBriefDerivedTitle(title, brief) ||
+    isTruncatedSentenceFragment(title)
+  ) {
+    const resolved = resolveSessionTitle(brief, titleSource);
+    if (resolved !== PLACEHOLDER_SESSION_TITLE) {
+      title = resolved;
+    } else if (isTruncatedSentenceFragment(title)) {
+      title = PLACEHOLDER_SESSION_TITLE;
+    }
+  }
+
   return {
     id: raw.id as string,
-    title: raw.title as string,
-    brief: raw.brief as string,
+    title,
+    brief,
     createdAt: raw.createdAt as number,
     updatedAt: raw.updatedAt as number,
     status:
@@ -164,14 +193,14 @@ export function migrateSession(raw: Record<string, unknown>): BoardSession {
         : (status ?? "idle"),
     phase,
     roundCount: (raw.roundCount as number | undefined) ?? (turns.length > 0 ? 1 : 0),
-    meetingPlan: (raw.meetingPlan as MeetingPlan | null) ?? null,
+    meetingPlan,
     turns,
     briefing,
     glossary,
     error: (raw.error as string | null) ?? null,
     timeline,
     thread: migratedThread,
-    pendingProposal: (raw.pendingProposal as MeetingProposal | null) ?? null,
+    pendingProposal,
     userMessages:
       (raw.userMessages as BoardSession["userMessages"] | undefined) ??
       migratedThread
@@ -191,7 +220,17 @@ export function loadSession(id: string): BoardSession | null {
     const raw = localStorage.getItem(sessionKey(id));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Record<string, unknown>;
-    return migrateSession(parsed);
+    const session = migrateSession(parsed);
+    const storedTitle = typeof parsed.title === "string" ? parsed.title : "";
+    if (session.title !== storedTitle) {
+      localStorage.setItem(sessionKey(id), JSON.stringify(session));
+      const summaries = readIndex().map((s) =>
+        s.id === id ? { ...s, title: session.title } : s,
+      );
+      writeIndex(summaries);
+      notifySessionsChanged();
+    }
+    return session;
   } catch {
     return null;
   }
@@ -217,7 +256,7 @@ export function createSession(brief: string): BoardSession {
   const trimmed = brief.trim();
   const session: BoardSession = {
     id: createSessionId(),
-    title: truncateTitle(trimmed),
+    title: PLACEHOLDER_SESSION_TITLE,
     brief: trimmed,
     createdAt: now,
     updatedAt: now,
@@ -260,9 +299,7 @@ export function patchSession(
     updatedAt: Date.now(),
   };
 
-  if (patch.briefing?.headline) {
-    updated.title = truncateTitle(patch.briefing.headline);
-  } else if (patch.title) {
+  if (patch.title) {
     updated.title = truncateTitle(patch.title);
   }
 

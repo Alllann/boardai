@@ -1,7 +1,7 @@
 import type { AgentOptions } from "@cursor/sdk";
 
 import type { BoardEmitEvent, StreamAction, StreamContext } from "./board-events";
-import { MAX_TURNS, MIN_ROLES, TARGET_TURNS_MIN } from "./board-constants";
+import { MAX_TURNS, MIN_ROLES } from "./board-constants";
 import { runPromptForText, runPromptStreaming, getAgentOptions } from "./agent-client";
 import { extractJsonObject } from "./json-extract";
 import { generateGlossary, generateGlossaryIncremental } from "./glossary-agent";
@@ -126,6 +126,7 @@ export async function resumeBoardSessionWithEvents(
         includeBriefing: true,
         scheduleIndex: action.scheduleIndex,
         userInterjection: action.message,
+        userMessages: ctx.userMessages,
         existingGlossary: ctx.glossary,
         abortSignal,
       },
@@ -144,7 +145,10 @@ async function runFollowUp(
   options: AgentOptions,
 ): Promise<void> {
   const plan = ctx.meetingPlan!;
-  const transcriptText = formatTranscriptForPrompt(ctx.turns);
+  const transcriptText = formatTranscriptForPrompt(ctx.turns, {
+    userBrief,
+    userMessages: ctx.userMessages,
+  });
   const briefingSummary = ctx.briefing
     ? `${ctx.briefing.headline}\n${ctx.briefing.thesis}`
     : undefined;
@@ -158,6 +162,7 @@ async function runFollowUp(
   );
 
   const roundId = (ctx.roundCount || 1) + 1;
+  const userMessages = ctx.userMessages ?? [];
 
   switch (route.action) {
     case "expert_direct": {
@@ -178,7 +183,10 @@ async function runFollowUp(
       const prompt = expertDirectReplyPrompt({
         expertTitle: role.title,
         mandate: role.mandate,
-        transcriptLines: transcriptText,
+        transcriptLines: formatTranscriptForPrompt(ctx.turns, {
+          userBrief,
+          userMessages,
+        }),
         userMessage: message,
         briefingSummary,
       });
@@ -245,7 +253,7 @@ async function runFollowUp(
         roles: [...plan.roles, ...newRoles.filter((nr) => !plan.roles.some((r) => r.id === nr.id))],
         meetingGoal: route.followUpGoal ?? plan.meetingGoal,
         turnSchedule:
-          route.turnSchedule && route.turnSchedule.length >= TARGET_TURNS_MIN
+          route.turnSchedule && route.turnSchedule.length > 0
             ? route.turnSchedule
             : plan.turnSchedule,
       };
@@ -258,14 +266,19 @@ async function runFollowUp(
         roundId,
         sink,
         options,
-        { includeGlossary: true, includeBriefing: true },
+        {
+          includeGlossary: true,
+          includeBriefing: true,
+          userMessages,
+          userInterjection: message,
+        },
       );
       return;
     }
 
     case "follow_up_round": {
       const schedule =
-        route.turnSchedule && route.turnSchedule.length >= TARGET_TURNS_MIN
+        route.turnSchedule && route.turnSchedule.length > 0
           ? route.turnSchedule
           : plan.turnSchedule;
       const roundPlan: MeetingPlan = {
@@ -282,7 +295,12 @@ async function runFollowUp(
         roundId,
         sink,
         options,
-        { includeGlossary: true, includeBriefing: true },
+        {
+          includeGlossary: true,
+          includeBriefing: true,
+          userMessages,
+          userInterjection: message,
+        },
       );
       return;
     }
@@ -304,6 +322,7 @@ async function runDiscussionFromPlan(
     includeGlossary?: boolean;
     scheduleIndex?: number;
     userInterjection?: string;
+    userMessages?: StreamContext["userMessages"];
     abortSignal?: AbortSignal;
     existingGlossary?: Glossary | null;
   } = {},
@@ -312,7 +331,8 @@ async function runDiscussionFromPlan(
   const scheduleStart = flags.scheduleIndex ?? 0;
   const otherTitles = () => plan.roles.map((r) => ({ title: r.title }));
   let accumulatedGlossary: Glossary = flags.existingGlossary ?? { entries: [] };
-  let ownerInterjection = flags.userInterjection?.trim() || undefined;
+  const ownerInterjection = flags.userInterjection?.trim() || undefined;
+  const userMessages = flags.userMessages ?? [];
   let pendingGlossary: Promise<Glossary> | null = null;
 
   const maxTurnId = turns.reduce((m, t) => Math.max(m, t.id), 0);
@@ -338,8 +358,11 @@ async function runDiscussionFromPlan(
       throw new Error(`Internal error: missing role ${roleId}`);
     }
 
-    const transcriptForPrompt = formatTranscriptForPrompt(turns, ownerInterjection);
-    ownerInterjection = undefined;
+    const transcriptForPrompt = formatTranscriptForPrompt(turns, {
+      userBrief,
+      userMessages,
+      ownerInterjection,
+    });
 
     const prompt = expertTurnPrompt({
       expertTitle: role.title,
@@ -347,6 +370,8 @@ async function runDiscussionFromPlan(
       otherExperts: otherTitles().filter((o) => o.title !== role.title),
       transcriptLines: transcriptForPrompt,
       chairNotes: plan.chairNotesForFacilitator,
+      userQuestion: ownerInterjection,
+      roundGoal: plan.meetingGoal,
     });
 
     if (flags.abortSignal?.aborted) {
@@ -416,6 +441,7 @@ async function runDiscussionFromPlan(
       turns,
       options,
       roundId > 1 ? `follow-up round ${roundId}` : undefined,
+      userMessages,
     );
     await sink({ type: "briefing", payload: briefing, roundId });
   }
@@ -545,38 +571,77 @@ function parseChairRouteJson(raw: string): ChairRoute {
   return chairRouteSchema.parse(data);
 }
 
-/** Ensure schedule references only known roles; trim length; pad if Chair was short. */
+/** Ensure schedule references only known roles; one turn per role. */
 export function finalizeMeetingPlan(plan: MeetingPlan): MeetingPlan {
   const ids = new Set(plan.roles.map((r) => r.id));
   const bad = plan.turnSchedule.find((id) => !ids.has(id));
   if (bad) {
     throw new Error(`turnSchedule references unknown roleId: ${bad}`);
   }
-  let schedule = plan.turnSchedule.slice(0, MAX_TURNS);
+
   const roleIds = plan.roles.map((r) => r.id);
-  while (schedule.length < TARGET_TURNS_MIN && roleIds.length > 0) {
-    schedule.push(roleIds[schedule.length % roleIds.length]!);
-    if (schedule.length > MAX_TURNS) {
-      schedule = schedule.slice(0, MAX_TURNS);
-      break;
+  const seen = new Set<string>();
+  const schedule: string[] = [];
+
+  for (const id of plan.turnSchedule) {
+    if (ids.has(id) && !seen.has(id)) {
+      schedule.push(id);
+      seen.add(id);
     }
   }
-  return { ...plan, turnSchedule: schedule };
+  for (const id of roleIds) {
+    if (!seen.has(id)) {
+      schedule.push(id);
+      seen.add(id);
+    }
+  }
+
+  return { ...plan, turnSchedule: schedule.slice(0, MAX_TURNS) };
 }
+
+export type UserMessageLine = {
+  content: string;
+  timestamp?: number;
+  roundId?: number;
+};
 
 function formatTranscriptForPrompt(
   turns: TranscriptTurn[],
-  ownerInterjection?: string,
+  options?: {
+    userBrief?: string;
+    userMessages?: UserMessageLine[];
+    ownerInterjection?: string;
+  },
 ): string {
-  if (turns.length === 0 && !ownerInterjection) {
+  const parts: string[] = [];
+
+  if (options?.userBrief?.trim()) {
+    parts.push(
+      `Owner's brief (what this session must address):\n---\n${options.userBrief.trim()}\n---`,
+    );
+  }
+
+  const priorUserMessages =
+    options?.userMessages?.filter(
+      (m) => !options.ownerInterjection || m.content.trim() !== options.ownerInterjection.trim(),
+    ) ?? [];
+  for (const msg of priorUserMessages) {
+    parts.push(`Owner: ${msg.content.trim()}`);
+  }
+
+  if (turns.length > 0) {
+    parts.push(turns.map((t) => `${t.roleName}: ${t.content}`).join("\n\n"));
+  }
+
+  if (options?.ownerInterjection?.trim()) {
+    parts.push(`Owner: ${options.ownerInterjection.trim()}`);
+  }
+
+  if (parts.length === 0) {
     return "(Meeting just started — no prior lines.)";
   }
-  const lines = turns.map((t) => `${t.roleName}: ${t.content}`).join("\n\n");
-  if (ownerInterjection) {
-    const ownerLine = `Owner: ${ownerInterjection}`;
-    return lines ? `${lines}\n\n${ownerLine}` : ownerLine;
-  }
-  return lines || "(Meeting just started — no prior lines.)";
+
+  return parts.join("\n\n");
 }
 
 async function generateMeetingProposal(
@@ -642,8 +707,12 @@ async function generateBriefing(
   turns: TranscriptTurn[],
   options: AgentOptions,
   roundLabel?: string,
+  userMessages?: UserMessageLine[],
 ): Promise<ChairBriefing> {
-  const transcriptText = formatTranscriptForPrompt(turns);
+  const transcriptText = formatTranscriptForPrompt(turns, {
+    userBrief,
+    userMessages,
+  });
   const meetingPlanJson = JSON.stringify(plan);
   let lastErr = "";
   for (let attempt = 0; attempt < 2; attempt++) {
