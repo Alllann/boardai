@@ -44,29 +44,25 @@ export function ExpertProfilePopover({ role, open, onClose }: Props) {
       ref={panelRef}
       role="dialog"
       aria-label={`${role.title} profile`}
-      className="absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border border-zinc-200 bg-white p-3 shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+      className="absolute left-0 top-full z-20 mt-2 w-72 rounded-xl border border-[var(--border-light)] bg-[var(--surface-raised)] p-4"
     >
       <div className="flex items-start gap-3">
         <ExpertAvatar role={role} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{role.title}</p>
-          <p className="text-[10px] uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Board seat
-          </p>
+          <p className="text-sm font-medium text-[var(--text-primary)]">{role.title}</p>
+          <p className="text-xs text-[var(--text-tertiary)]">Expert</p>
         </div>
       </div>
 
       {role.background ? (
-        <p className="mt-3 text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">
+        <p className="mt-3 text-xs leading-relaxed text-[var(--text-secondary)]">
           {role.background}
         </p>
       ) : null}
 
-      <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-        <p className="text-[10px] font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Mandate
-        </p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+      <div className="mt-3 border-t border-[var(--border-light)] pt-3">
+        <p className="text-xs font-medium text-[var(--text-tertiary)]">Mandate</p>
+        <p className="mt-1 text-xs leading-relaxed text-[var(--text-secondary)]">
           {role.mandate}
         </p>
       </div>

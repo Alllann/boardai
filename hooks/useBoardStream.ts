@@ -16,6 +16,7 @@ import {
   syncTurnToThread,
   type BoardSession,
 } from "@/lib/session-store";
+import { CHAIR_CONVENING_MESSAGE } from "@/lib/board-constants";
 import {
   isTruncatedSentenceFragment,
   PLACEHOLDER_SESSION_TITLE,
@@ -360,12 +361,15 @@ export function useBoardStream(sessionId: string) {
     if (current.status === "awaiting_user") return;
 
     streamStartedRef.current = true;
-    appendChairThreadMessage(
-      sessionId,
-      "I'm convening the board and reviewing your brief…",
+    const hasConvening = current.thread.some(
+      (t) => t.kind === "chair" && t.content === CHAIR_CONVENING_MESSAGE,
     );
+    if (!hasConvening) {
+      appendChairThreadMessage(sessionId, CHAIR_CONVENING_MESSAGE);
+    }
+    bump();
     await consumeStream({ action: "start", brief: current.brief });
-  }, [sessionId, consumeStream]);
+  }, [sessionId, consumeStream, bump]);
 
   const approveProposal = useCallback(
     async (invitedRoleIds: string[]) => {

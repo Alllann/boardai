@@ -36,26 +36,26 @@ export function Sidebar({ className = "", onNavigate }: Props) {
 
   return (
     <aside
-      className={`flex h-full w-[260px] shrink-0 flex-col bg-[var(--sidebar-surface)] ${className}`}
+      className={`flex h-full w-[220px] shrink-0 flex-col bg-[var(--sidebar-surface)] ${className}`}
     >
-      <div className="flex items-center gap-2 px-3 py-3">
+      <div className="flex items-center gap-1 px-3 py-4">
         <Link
           href="/"
           onClick={onNavigate}
-          className="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-1 py-1 text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
+          className="flex min-w-0 flex-1 items-center gap-2 rounded-full px-2 py-1.5 text-[var(--text-primary)] transition hover:bg-[var(--sidebar-hover)]"
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-600 text-sm font-bold text-white">
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[var(--surface-raised)] text-[11px] font-medium text-[var(--text-primary)]">
             B
           </span>
-          <span className="truncate text-sm font-semibold">Board AI</span>
+          <span className="truncate text-sm font-normal">Board AI</span>
         </Link>
         <button
           type="button"
           onClick={toggleSidebar}
-          className="hidden rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] md:inline-flex"
+          className="hidden rounded-full p-2 text-[var(--text-tertiary)] transition hover:bg-[var(--sidebar-hover)] md:inline-flex"
           aria-label="Collapse sidebar"
         >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
             <path d="M15 18l-6-6 6-6" />
           </svg>
         </button>
@@ -65,24 +65,22 @@ export function Sidebar({ className = "", onNavigate }: Props) {
         <Link
           href="/"
           onClick={onNavigate}
-          className="flex w-full items-center gap-2 rounded-lg border border-[var(--border-light)] px-3 py-2 text-sm text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
+          className="flex w-full items-center gap-2 rounded-full px-3 py-2 text-sm text-[var(--text-secondary)] transition hover:bg-[var(--sidebar-hover)] hover:text-[var(--text-primary)]"
         >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
             <path d="M12 5v14M5 12h14" />
           </svg>
-          New board session
+          New session
         </Link>
       </div>
 
       <nav className="min-h-0 flex-1 overflow-y-auto px-2 pb-3">
         {!mounted ? null : groups.length === 0 ? (
-          <p className="px-2 py-4 text-xs text-[var(--text-secondary)]">No sessions yet</p>
+          <p className="px-3 py-4 text-xs text-[var(--text-tertiary)]">No sessions yet</p>
         ) : (
           groups.map((group) => (
             <div key={group.label} className="mb-3">
-              <p className="px-2.5 py-1 text-[11px] font-medium text-[var(--text-secondary)]">
-                {group.label}
-              </p>
+              <p className="px-3 py-1.5 text-[11px] text-[var(--text-tertiary)]">{group.label}</p>
               <ul className="space-y-0.5">
                 {group.items.map((s) => (
                   <li key={s.id}>
@@ -100,13 +98,9 @@ export function Sidebar({ className = "", onNavigate }: Props) {
         )}
       </nav>
 
-      <div className="border-t border-[var(--border-light)] px-3 py-3 md:hidden">
-        <button
-          type="button"
-          onClick={onNavigate}
-          className="text-xs text-[var(--text-secondary)]"
-        >
-          Close sidebar
+      <div className="px-3 py-3 md:hidden">
+        <button type="button" onClick={onNavigate} className="text-xs text-[var(--text-tertiary)]">
+          Close
         </button>
       </div>
     </aside>
@@ -117,20 +111,20 @@ export function SidebarRail() {
   const { setSidebarCollapsed } = useShell();
 
   return (
-    <div className="hidden h-full w-14 shrink-0 flex-col items-center border-r border-[var(--border-light)] bg-[var(--sidebar-surface)] py-3 md:flex">
+    <div className="hidden h-full w-11 shrink-0 flex-col items-center bg-[var(--sidebar-surface)] py-4 md:flex">
       <Link
         href="/"
-        className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-600 text-xs font-bold text-white"
+        className="mb-4 flex h-7 w-7 items-center justify-center rounded-full bg-[var(--surface-raised)] text-[10px] font-medium"
       >
         B
       </Link>
       <button
         type="button"
         onClick={() => setSidebarCollapsed(false)}
-        className="rounded-lg p-2 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+        className="rounded-full p-2 text-[var(--text-tertiary)] transition hover:bg-[var(--sidebar-hover)]"
         aria-label="Open sidebar"
       >
-        <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2">
+        <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
           <path d="M9 18l6-6-6-6" />
         </svg>
       </button>

@@ -16,11 +16,13 @@ export function GlossaryPanel({ entries, defaultOpen = false }: Props) {
 
   if (defaultOpen) {
     return (
-      <ul className="space-y-3">
+      <ul className="space-y-4">
         {entries.map((e, i) => (
-          <li key={`${e.phrase}-${i}`} className="text-xs">
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">{e.phrase}</span>
-            <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">{e.explanation}</p>
+          <li key={`${e.phrase}-${i}`}>
+            <span className="text-xs font-medium text-[var(--text-primary)]">{e.phrase}</span>
+            <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-secondary)]">
+              {e.explanation}
+            </p>
           </li>
         ))}
       </ul>
@@ -28,24 +30,22 @@ export function GlossaryPanel({ entries, defaultOpen = false }: Props) {
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white/80 dark:border-zinc-700 dark:bg-zinc-950/50">
+    <div className="rounded-lg border border-[var(--border-light)] bg-[var(--surface-raised)]">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-zinc-700 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-100"
+        className="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)]"
         aria-expanded={open}
       >
-        Glossary ({entries.length} term{entries.length === 1 ? "" : "s"})
-        <span aria-hidden>{open ? "▾" : "▸"}</span>
+        Glossary ({entries.length})
+        <span aria-hidden className="text-[var(--text-tertiary)]">{open ? "−" : "+"}</span>
       </button>
       {open ? (
-        <ul className="space-y-2 border-t border-zinc-200 px-3 py-2 dark:border-zinc-700">
+        <ul className="space-y-3 border-t border-[var(--border-light)] px-3 py-3">
           {entries.map((e, i) => (
-            <li key={`${e.phrase}-${i}`} className="text-xs">
-              <span className="font-medium text-zinc-800 dark:text-zinc-200">
-                {e.phrase}
-              </span>
-              <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">
+            <li key={`${e.phrase}-${i}`}>
+              <span className="text-xs font-medium text-[var(--text-primary)]">{e.phrase}</span>
+              <p className="mt-0.5 text-xs leading-relaxed text-[var(--text-secondary)]">
                 {e.explanation}
               </p>
             </li>

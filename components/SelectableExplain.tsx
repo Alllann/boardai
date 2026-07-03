@@ -416,7 +416,7 @@ export function SelectableExplain({
               type="button"
               onMouseDown={(e) => e.preventDefault()}
               onClick={handleExplainClick}
-              className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-xs font-medium text-zinc-800 shadow-lg hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+              className="rounded-lg border border-[var(--border-light)] bg-[var(--surface-raised)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] transition hover:bg-[var(--surface-hover)]"
             >
               Explain
             </button>
@@ -429,24 +429,24 @@ export function SelectableExplain({
             id={popoverId}
             role="dialog"
             aria-label="Explanation"
-            className="fixed z-50 max-h-[min(24rem,70vh)] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-lg border border-zinc-200 bg-white p-3 text-left shadow-xl dark:border-zinc-600 dark:bg-zinc-900"
+            className="fixed z-50 max-h-[min(24rem,70vh)] w-[min(22rem,calc(100vw-2rem))] overflow-y-auto rounded-xl border border-[var(--border-light)] bg-[var(--surface-raised)] p-4 text-left"
             style={{
               left: popoverPos?.left ?? popoverFallback?.left ?? anchor.x,
               top: popoverPos?.top ?? popoverFallback?.top ?? anchor.y + 12,
             }}
           >
-            <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <p className="mb-1 text-xs font-medium text-[var(--text-tertiary)]">
               Explaining
             </p>
-            <p className="mb-2 line-clamp-2 text-xs italic text-zinc-600 dark:text-zinc-400">
+            <p className="mb-2 line-clamp-2 text-xs italic text-[var(--text-secondary)]">
               &ldquo;{popover.selection.slice(0, 120)}
               {popover.selection.length > 120 ? "\u2026" : ""}&rdquo;
             </p>
             {popover.status === "loading" ? (
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">Loading…</p>
+              <p className="text-xs text-[var(--text-tertiary)]">Loading…</p>
             ) : null}
             {popover.status === "ready" ? (
-              <p className="text-xs leading-relaxed text-zinc-800 dark:text-zinc-200">
+              <p className="text-xs leading-relaxed text-[var(--text-secondary)]">
                 {popover.explanation}
               </p>
             ) : null}
@@ -458,7 +458,7 @@ export function SelectableExplain({
             <button
               type="button"
               onClick={dismissPopover}
-              className="mt-2 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+              className="mt-2 text-xs text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
             >
               Dismiss
             </button>

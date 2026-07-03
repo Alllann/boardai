@@ -45,22 +45,20 @@ export function ChatProposalCard({
         <ExpandableText
           text={proposal.chairMessage}
           lines={3}
-          className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200"
+          className="text-[var(--text-secondary)]"
         />
-        <div className="mt-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Goal
-          </p>
+        <div className="mt-3">
+          <p className="text-xs font-medium text-[var(--text-tertiary)]">Goal</p>
           <ExpandableText
             text={proposal.meetingGoal}
             lines={2}
-            className="mt-0.5 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400"
+            className="mt-0.5 text-xs leading-relaxed text-[var(--text-secondary)]"
           />
         </div>
       </ChatParticipantTurn>
 
-      <li className="flex justify-start py-1 pl-12">
-        <div className="w-full max-w-[min(32rem,92%)] space-y-3">
+      <li className="w-full py-2">
+        <div className="w-full space-y-3">
           <ExpertInviteCarousel
             roles={proposal.roles}
             invitedRoleIds={invitedRoleIds}
@@ -69,7 +67,7 @@ export function ChatProposalCard({
           />
 
           {!canStart ? (
-            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+            <p className="text-xs text-[var(--text-tertiary)]">
               Invite at least {MIN_ROLES} experts to start.
             </p>
           ) : null}
@@ -79,15 +77,15 @@ export function ChatProposalCard({
               type="button"
               disabled={loading || !canStart}
               onClick={onApprove}
-              className="rounded-full bg-emerald-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-emerald-700 disabled:opacity-50 dark:bg-emerald-600 dark:hover:bg-emerald-500"
+              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-medium text-[var(--accent-fg)] transition hover:opacity-90 disabled:opacity-40"
             >
-              Looks good, start
+              Start session
             </button>
             <button
               type="button"
               disabled={loading}
               onClick={onSuggestChanges}
-              className="rounded-full border border-zinc-300 px-4 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+              className="rounded-full bg-[var(--surface-raised)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-40"
             >
               Suggest changes
             </button>

@@ -26,27 +26,32 @@ export function HomePageClient() {
     <div className="flex min-h-0 flex-1 flex-col">
       <ThreadHeader
         title="Board AI"
+        minimal
         onMenuClick={() => setMobileSidebarOpen(true)}
       />
-      <div className="flex min-h-0 flex-1 flex-col">
-        <div className="flex flex-1 flex-col items-center justify-center px-6 pb-4 pt-12 text-center">
-          <h2 className="mb-2 text-2xl font-semibold tracking-tight text-[var(--text-primary)]">
-            What should the board help with?
-          </h2>
-          <p className="max-w-md text-sm leading-relaxed text-[var(--text-secondary)]">
-            Send a decision, plan, or question in any domain. The Chair will invite experts,
-            run the discussion, and share a briefing — like a group chat.
-          </p>
+
+      <main className="flex min-h-0 flex-1 items-center justify-center px-6 pb-[12vh] pt-6 md:px-10 lg:px-16">
+        <div className="w-full max-w-4xl">
+          <div className="mb-8 text-center">
+            <h2 className="text-[1.625rem] font-normal leading-snug tracking-tight text-[var(--text-primary)] md:text-[1.75rem]">
+              What should the board help with?
+            </h2>
+            <p className="mx-auto mt-2.5 max-w-2xl text-[15px] leading-relaxed text-[var(--text-secondary)]">
+              Describe a decision, plan, or question. The Chair will invite
+              experts and share a briefing.
+            </p>
+          </div>
+
+          <ChatComposer
+            value={brief}
+            onChange={setBrief}
+            onSubmit={() => handleSubmit(brief)}
+            loading={submitting}
+            disabled={submitting}
+            variant="home"
+          />
         </div>
-        <ChatComposer
-          value={brief}
-          onChange={setBrief}
-          onSubmit={() => handleSubmit(brief)}
-          loading={submitting}
-          disabled={submitting}
-          variant="home"
-        />
-      </div>
+      </main>
     </div>
   );
 }

@@ -22,50 +22,50 @@ export function ChatExpertsInvite({ plan }: Props) {
         title="Chair"
         subtitle="Facilitator"
       >
-        <p className="text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+        <p className="text-[var(--text-secondary)]">
           You invited {count} expert{count === 1 ? "" : "s"} to the group.
         </p>
-        <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">
-          <span className="font-medium">Goal:</span> {plan.meetingGoal}
+        <p className="mt-1 text-xs text-[var(--text-tertiary)]">
+          Goal: {plan.meetingGoal}
         </p>
       </ChatParticipantTurn>
 
-      <li className="flex justify-start py-1 pl-12">
-        <div className="max-w-[min(32rem,92%)]">
+      <li className="w-full py-2">
+        <div className="w-full">
           <button
             type="button"
             onClick={() => setExpanded((v) => !v)}
-            className="text-xs font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
+            className="text-xs text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
             aria-expanded={expanded}
           >
             {count} expert{count === 1 ? "" : "s"} · {expanded ? "Hide" : "Show"}
           </button>
           {expanded ? (
-            <ul className="mt-2 space-y-2 border-t border-zinc-200 pt-2 dark:border-zinc-700">
+            <ul className="mt-2 space-y-2 border-t border-[var(--border-light)] pt-2">
               {plan.roles.map((r) => (
                 <li
                   key={r.id}
-                  className="flex gap-2.5 rounded-lg border border-zinc-200 bg-white/90 px-2.5 py-2 text-xs dark:border-zinc-700 dark:bg-zinc-950/50"
+                  className="flex gap-2.5 rounded-[var(--radius-soft)] bg-[var(--surface-raised)] px-3 py-2.5 text-xs"
                 >
                   <ExpertAvatar role={r} size="sm" />
                   <div className="min-w-0">
-                    <p className="font-medium text-zinc-900 dark:text-zinc-100">{r.title}</p>
+                    <p className="font-medium text-[var(--text-primary)]">{r.title}</p>
                     {r.background ? (
-                      <p className="mt-0.5 leading-snug text-zinc-600 dark:text-zinc-400">
+                      <p className="mt-0.5 leading-snug text-[var(--text-secondary)]">
                         {r.background}
                       </p>
                     ) : null}
-                    <p className="mt-0.5 leading-snug text-zinc-500">{r.mandate}</p>
+                    <p className="mt-0.5 leading-snug text-[var(--text-tertiary)]">{r.mandate}</p>
                   </div>
                 </li>
               ))}
             </ul>
           ) : (
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
+            <div className="mt-2 flex flex-wrap gap-1.5">
               {plan.roles.map((r) => (
                 <span
                   key={r.id}
-                  className="rounded-full border border-zinc-200 bg-white/90 px-2 py-0.5 text-[10px] font-medium text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900/60 dark:text-zinc-300"
+                  className="rounded-full bg-[var(--surface-raised)] px-2.5 py-1 text-[11px] text-[var(--text-secondary)]"
                 >
                   {r.title}
                 </span>

@@ -55,7 +55,7 @@ export function ExpandableText({
           onClick={() => setExpanded((v) => !v)}
           className={
             buttonClassName ||
-            "mt-1 text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+            "mt-1 text-xs text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
           }
         >
           {expanded ? "Show less" : "Show more"}

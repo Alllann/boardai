@@ -1,4 +1,4 @@
-/** Deterministic avatar styling per role id — distinct colors and shapes. */
+/** Deterministic avatar styling per role id — soft neutral tones only. */
 
 export type ExpertAvatarStyle = {
   initials: string;
@@ -8,17 +8,15 @@ export type ExpertAvatarStyle = {
 };
 
 const AVATAR_BACKGROUNDS = [
-  { bg: "bg-sky-200 dark:bg-sky-800", text: "text-sky-900 dark:text-sky-100" },
-  { bg: "bg-violet-200 dark:bg-violet-800", text: "text-violet-900 dark:text-violet-100" },
-  { bg: "bg-amber-200 dark:bg-amber-800", text: "text-amber-900 dark:text-amber-100" },
-  { bg: "bg-emerald-200 dark:bg-emerald-800", text: "text-emerald-900 dark:text-emerald-100" },
-  { bg: "bg-rose-200 dark:bg-rose-800", text: "text-rose-900 dark:text-rose-100" },
-  { bg: "bg-teal-200 dark:bg-teal-800", text: "text-teal-900 dark:text-teal-100" },
-  { bg: "bg-indigo-200 dark:bg-indigo-800", text: "text-indigo-900 dark:text-indigo-100" },
-  { bg: "bg-orange-200 dark:bg-orange-800", text: "text-orange-900 dark:text-orange-100" },
+  { bg: "bg-neutral-200 dark:bg-neutral-700", text: "text-neutral-600 dark:text-neutral-200" },
+  { bg: "bg-stone-200 dark:bg-stone-700", text: "text-stone-600 dark:text-stone-200" },
+  { bg: "bg-zinc-200 dark:bg-zinc-700", text: "text-zinc-600 dark:text-zinc-200" },
+  { bg: "bg-neutral-300 dark:bg-neutral-600", text: "text-neutral-700 dark:text-neutral-100" },
+  { bg: "bg-stone-300 dark:bg-stone-600", text: "text-stone-700 dark:text-stone-100" },
+  { bg: "bg-zinc-300 dark:bg-zinc-600", text: "text-zinc-700 dark:text-zinc-100" },
 ] as const;
 
-const AVATAR_PATTERNS = ["circle", "rounded", "squircle", "hex"] as const;
+const AVATAR_PATTERNS = ["circle"] as const;
 
 function hashRoleId(roleId: string): number {
   let h = 0;

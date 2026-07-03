@@ -2,8 +2,8 @@
 
 const SIZE_CLASSES = {
   sm: "h-7 w-7 text-[10px]",
-  md: "h-9 w-9 text-xs",
-  lg: "h-11 w-11 text-sm",
+  md: "h-8 w-8 text-[11px]",
+  lg: "h-10 w-10 text-xs",
 } as const;
 
 type Props = {
@@ -15,7 +15,7 @@ type Props = {
 export function ChairAvatar({ size = "md", onClick, className = "" }: Props) {
   const inner = (
     <span
-      className={`flex shrink-0 items-center justify-center rounded-full bg-amber-200 font-semibold text-amber-900 dark:bg-amber-800 dark:text-amber-100 ${SIZE_CLASSES[size]} ${className}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-[var(--surface-raised)] font-medium text-[var(--text-primary)] ${SIZE_CLASSES[size]} ${className}`}
       aria-hidden={!onClick}
     >
       C
@@ -27,7 +27,7 @@ export function ChairAvatar({ size = "md", onClick, className = "" }: Props) {
       <button
         type="button"
         onClick={onClick}
-        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
+        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         title="Chair — meeting facilitator"
         aria-label="View Chair profile"
       >

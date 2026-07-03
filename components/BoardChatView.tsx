@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { BoardKickoffProgress } from "@/components/BoardKickoffProgress";
 import { ChatBriefingCard } from "@/components/chat/ChatBriefingCard";
 import { ChatChairMessage } from "@/components/chat/ChatChairMessage";
 import { ChatComposer } from "@/components/chat/ChatComposer";
@@ -27,6 +28,7 @@ import {
   getThreadSpeaker,
 } from "@/lib/chat-grouping";
 import { getMentionCandidates, loadSession } from "@/lib/session-store";
+import { CHAIR_CONVENING_MESSAGE } from "@/lib/board-constants";
 import type { ThreadItem, SessionTimelineEvent } from "@/lib/schemas";
 
 type Props = {
@@ -38,7 +40,7 @@ function isLegacyDiscussionCount(message: string): boolean {
 }
 
 const LEGACY_STATUS_AS_CHAIR: Record<string, string> = {
-  "Chair is convening the board…": "I'm convening the board and reviewing your brief…",
+  "Chair is convening the board…": CHAIR_CONVENING_MESSAGE,
   "Chair is reviewing your brief…": "I'm reviewing your brief and putting together a roster for this session…",
   "Inviting experts to the group…": "Starting the discussion with your invited experts…",
   "Writing briefing…": "I'll wrap up with a briefing from this discussion…",
@@ -53,7 +55,7 @@ export function BoardChatView({ sessionId }: Props) {
     sendFollowUp,
     interruptDiscussion,
   } = useBoardStream(sessionId);
-  const { setMobileSidebarOpen, focusMode, setFocusMode } = useShell();
+  const { setMobileSidebarOpen } = useShell();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLTextAreaElement>(null);
@@ -62,6 +64,7 @@ export function BoardChatView({ sessionId }: Props) {
   const [composerValue, setComposerValue] = useState("");
   const [glossaryExpanded, setGlossaryExpanded] = useState(false);
   const [invitedRoleIds, setInvitedRoleIds] = useState<string[]>([]);
+  const [hydrated, setHydrated] = useState(false);
 
   const SCROLL_BOTTOM_THRESHOLD = 80;
 
@@ -129,10 +132,24 @@ export function BoardChatView({ sessionId }: Props) {
   }, [brief, meetingPlan, turns, briefing]);
 
   useEffect(() => {
+    setHydrated(true);
+  }, []);
+
+  useEffect(() => {
     if (pendingProposal) {
       setInvitedRoleIds([]);
     }
   }, [pendingProposal?.id]);
+
+  const showKickoffProgress = useMemo(
+    () =>
+      loading &&
+      !meetingPlan &&
+      !pendingProposal &&
+      !streamingChair &&
+      !streamingTurn,
+    [loading, meetingPlan, pendingProposal, streamingChair, streamingTurn],
+  );
 
   const discussionInProgress =
     loading && !!meetingPlan && !briefing && !pendingProposal;
@@ -150,7 +167,7 @@ export function BoardChatView({ sessionId }: Props) {
   const showChairTyping = useMemo(() => {
     if (!loading || streamingTurn || streamingChair) return false;
     if (pendingProposal) return false;
-    if (!meetingPlan) return true;
+    if (!meetingPlan) return !showKickoffProgress;
     if (!briefing && meetingPlan && turns.length >= meetingPlan.turnSchedule.length) {
       return true;
     }
@@ -163,6 +180,7 @@ export function BoardChatView({ sessionId }: Props) {
     meetingPlan,
     briefing,
     turns.length,
+    showKickoffProgress,
   ]);
 
   useEffect(() => {
@@ -228,18 +246,11 @@ export function BoardChatView({ sessionId }: Props) {
 
   const headerActions = (
     <>
-      <button
-        type="button"
-        onClick={() => setFocusMode(!focusMode)}
-        className="hidden rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] sm:inline"
-      >
-        {focusMode ? "Show sidebar" : "Focus"}
-      </button>
       {turns.length > 0 ? (
         <button
           type="button"
           onClick={() => copyText("transcript", JSON.stringify({ turns }, null, 2))}
-          className="rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)]"
         >
           Copy JSON
         </button>
@@ -248,7 +259,7 @@ export function BoardChatView({ sessionId }: Props) {
         <button
           type="button"
           onClick={() => copyText("briefing", JSON.stringify(briefing, null, 2))}
-          className="rounded-lg px-2 py-1 text-xs text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)]"
         >
           Briefing
         </button>
@@ -516,6 +527,17 @@ export function BoardChatView({ sessionId }: Props) {
     return items;
   };
 
+  if (!hydrated) {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <ThreadHeader title={title} onMenuClick={() => setMobileSidebarOpen(true)} />
+        <div className="flex flex-1 items-center justify-center px-6">
+          <p className="text-sm text-[var(--text-tertiary)]">Loading session…</p>
+        </div>
+      </div>
+    );
+  }
+
   if (!state) {
     return (
       <div className="flex flex-1 items-center justify-center text-sm text-[var(--text-secondary)]">
@@ -568,7 +590,7 @@ export function BoardChatView({ sessionId }: Props) {
       {error ? (
         <div
           role="alert"
-          className="mx-4 mt-2 shrink-0 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-900 dark:border-red-900/50 dark:bg-red-950/40 dark:text-red-100"
+          className="mx-4 mt-2 shrink-0 rounded-lg border border-[var(--border-light)] bg-[var(--surface-muted)] px-3 py-2 text-sm text-[var(--text-primary)]"
         >
           {error}
         </div>
@@ -576,9 +598,11 @@ export function BoardChatView({ sessionId }: Props) {
 
       <div className="flex min-h-0 flex-1">
         <div className="relative min-h-0 min-w-0 flex-1">
-          <div ref={chatScrollRef} className="h-full overflow-y-auto px-3 py-4">
-            <ul className="mx-auto flex max-w-3xl flex-col gap-1">
+          <div ref={chatScrollRef} className="h-full overflow-y-auto px-6 py-6 md:px-10 lg:px-16">
+            <ul className="mx-auto flex w-full max-w-4xl flex-col gap-0.5">
               {chatItems}
+
+              <BoardKickoffProgress visible={showKickoffProgress} />
 
               {streamingTurn ? (
                 <DiscussionTurn
@@ -630,7 +654,7 @@ export function BoardChatView({ sessionId }: Props) {
               <button
                 type="button"
                 onClick={jumpToBottom}
-                className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-[var(--border-light)] bg-[var(--main-surface)] px-3 py-1.5 text-xs font-medium text-[var(--text-primary)] shadow-md transition hover:bg-[var(--surface-hover)]"
+                className="pointer-events-auto flex items-center gap-1.5 rounded-full bg-[var(--surface-raised)] px-3.5 py-2 text-xs text-[var(--text-secondary)] shadow-[var(--shadow-soft)] transition hover:text-[var(--text-primary)]"
               >
                 <svg
                   viewBox="0 0 24 24"
@@ -661,7 +685,7 @@ export function BoardChatView({ sessionId }: Props) {
       </div>
 
       {discussionInProgress ? (
-        <p className="shrink-0 border-t border-zinc-100 px-4 py-1.5 text-center text-[11px] text-zinc-500 dark:border-zinc-800 dark:text-zinc-400">
+        <p className="shrink-0 px-4 py-2 text-center text-[11px] text-[var(--text-tertiary)]">
           Discussion in progress — send anytime to jump in.
         </p>
       ) : null}

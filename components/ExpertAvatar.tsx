@@ -18,8 +18,8 @@ type Props = {
 
 const SIZE_CLASSES = {
   sm: "h-7 w-7 text-[10px]",
-  md: "h-9 w-9 text-xs",
-  lg: "h-11 w-11 text-sm",
+  md: "h-8 w-8 text-[11px]",
+  lg: "h-10 w-10 text-xs",
 } as const;
 
 export function ExpertAvatar({ role, size = "md", onClick, className = "" }: Props) {
@@ -29,7 +29,7 @@ export function ExpertAvatar({ role, size = "md", onClick, className = "" }: Pro
 
   const inner = (
     <span
-      className={`flex shrink-0 items-center justify-center font-semibold ${shape} ${style.bgClass} ${style.textClass} ${SIZE_CLASSES[size]} ${className}`}
+      className={`flex shrink-0 items-center justify-center font-medium ${shape} ${style.bgClass} ${style.textClass} ${SIZE_CLASSES[size]} ${className}`}
       aria-hidden={!onClick}
     >
       {style.initials}
@@ -41,7 +41,7 @@ export function ExpertAvatar({ role, size = "md", onClick, className = "" }: Pro
       <button
         type="button"
         onClick={onClick}
-        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-400"
+        className="shrink-0 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
         title={tooltip}
         aria-label={`View profile: ${role.title}`}
       >

@@ -41,7 +41,7 @@ export function AppShell({ children }: Props) {
         <>
           <button
             type="button"
-            className="fixed inset-0 z-40 bg-black/40 md:hidden"
+            className="fixed inset-0 z-40 bg-black/15 backdrop-blur-[2px] md:hidden"
             aria-label="Close sidebar overlay"
             onClick={() => setMobileSidebarOpen(false)}
           />

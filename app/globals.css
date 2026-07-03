@@ -2,65 +2,95 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #0d0d0d;
-  --sidebar-surface: #f7f8fa;
+  --foreground: #111111;
+  --sidebar-surface: #f2f2f2;
+  --sidebar-hover: rgba(0, 0, 0, 0.05);
   --main-surface: #ffffff;
-  --text-primary: #0d0d0d;
-  --text-secondary: #5d5d5d;
-  --border-light: rgba(13, 13, 13, 0.1);
-  --surface-hover: rgba(13, 13, 13, 0.05);
-  --user-msg-bg: #f4f4f4;
+  --surface-raised: #f7f7f7;
+  --surface-input: #f3f3f3;
+  --surface-invite-btn: #ffffff;
+  --text-primary: #111111;
+  --text-secondary: #666666;
+  --text-tertiary: #999999;
+  --border-light: rgba(0, 0, 0, 0.05);
+  --border-medium: rgba(0, 0, 0, 0.08);
+  --surface-hover: rgba(0, 0, 0, 0.04);
+  --surface-muted: rgba(0, 0, 0, 0.03);
+  --user-msg-bg: #efefef;
+  --user-msg-fg: #111111;
+  --peer-msg-bg: #f5f5f5;
+  --accent: #111111;
+  --accent-fg: #ffffff;
+  --accent-muted: rgba(0, 0, 0, 0.05);
+  --ring: rgba(0, 0, 0, 0.1);
+  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.04), 0 8px 24px rgba(0, 0, 0, 0.06);
+  --radius-pill: 9999px;
+  --radius-soft: 1.25rem;
+  --radius-bubble: 1.375rem;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #101011;
-    --foreground: #fafafa;
-    --sidebar-surface: #1a1a1d;
-    --main-surface: #171717;
-    --text-primary: rgba(255, 255, 255, 0.98);
-    --text-secondary: rgba(255, 255, 255, 0.65);
-    --border-light: rgba(255, 255, 255, 0.12);
-    --surface-hover: rgba(255, 255, 255, 0.08);
-    --user-msg-bg: #2f2f2f;
+    --background: #000000;
+    --foreground: #f5f5f5;
+    --sidebar-surface: #141414;
+    --sidebar-hover: rgba(255, 255, 255, 0.07);
+    --main-surface: #000000;
+    --surface-raised: #1a1a1a;
+    --surface-input: #1c1c1c;
+    --surface-invite-btn: #ffffff;
+    --text-primary: #f5f5f5;
+    --text-secondary: #a3a3a3;
+    --text-tertiary: #737373;
+    --border-light: rgba(255, 255, 255, 0.06);
+    --border-medium: rgba(255, 255, 255, 0.1);
+    --surface-hover: rgba(255, 255, 255, 0.06);
+    --surface-muted: rgba(255, 255, 255, 0.04);
+    --user-msg-bg: #3a3a3a;
+    --user-msg-fg: #f5f5f5;
+    --peer-msg-bg: #1a1a1a;
+    --accent: #f5f5f5;
+    --accent-fg: #111111;
+    --accent-muted: rgba(255, 255, 255, 0.08);
+    --ring: rgba(255, 255, 255, 0.14);
+    --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.2), 0 8px 28px rgba(0, 0, 0, 0.45);
   }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--accent-muted);
+}
+
+.composer-pill {
+  background: var(--surface-input);
+  box-shadow: var(--shadow-soft);
 }
 
 @keyframes explain-pending-glow {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgb(161 161 170 / 0.35);
+    box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-tertiary) 30%, transparent);
   }
   50% {
-    box-shadow: 0 0 10px 2px rgb(161 161 170 / 0.55);
+    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--text-tertiary) 40%, transparent);
   }
 }
 
 .explain-pending-glow {
   animation: explain-pending-glow 1.4s ease-in-out infinite;
-}
-
-@media (prefers-color-scheme: dark) {
-  @keyframes explain-pending-glow {
-    0%,
-    100% {
-      box-shadow: 0 0 0 0 rgb(113 113 122 / 0.4);
-    }
-    50% {
-      box-shadow: 0 0 12px 3px rgb(161 161 170 / 0.45);
-    }
-  }
 }

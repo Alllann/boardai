@@ -15,6 +15,7 @@ import {
   PLACEHOLDER_SESSION_TITLE,
   resolveSessionTitle,
 } from "./session-title";
+import { CHAIR_CONVENING_MESSAGE } from "./board-constants";
 
 export type SessionStatus =
   | "idle"
@@ -276,6 +277,13 @@ export function createSession(brief: string): BoardSession {
         content: trimmed,
         timestamp: now,
         roundId: 1,
+      },
+      {
+        kind: "chair",
+        id: "kickoff-convening",
+        content: CHAIR_CONVENING_MESSAGE,
+        timestamp: now + 1,
+        roundId: 0,
       },
     ],
     pendingProposal: null,

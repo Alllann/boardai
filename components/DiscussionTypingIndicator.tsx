@@ -18,15 +18,15 @@ export function DiscussionTypingIndicator({
     <ChatParticipantTurn
       avatar={<ExpertAvatar role={role} size="md" />}
       title={role.title}
-      subtitle="Board seat"
+      subtitle="Expert"
       showAvatar={showAvatar}
       showName={showName}
     >
-      <p className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="flex items-center gap-1.5 text-xs text-[var(--text-tertiary)]">
         <span className="inline-flex gap-0.5" aria-hidden>
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:0ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:150ms]" />
-          <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-zinc-400 [animation-delay:300ms]" />
+          <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-tertiary)] [animation-delay:0ms]" />
+          <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-tertiary)] [animation-delay:150ms]" />
+          <span className="h-1 w-1 animate-bounce rounded-full bg-[var(--text-tertiary)] [animation-delay:300ms]" />
         </span>
         is speaking…
       </p>

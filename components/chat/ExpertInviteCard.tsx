@@ -47,22 +47,20 @@ export function ExpertInviteCard({
 
   return (
     <article
-      className={`flex h-full w-[min(17.5rem,78vw)] shrink-0 snap-center flex-col rounded-xl border p-3 transition-colors ${
+      className={`flex h-full w-[min(20rem,calc(100%-0.5rem))] shrink-0 snap-center flex-col rounded-[var(--radius-soft)] p-4 transition-colors sm:w-[min(22rem,48%)] lg:w-[min(24rem,32%)] ${
         invited
-          ? "border-emerald-300/80 bg-emerald-50/90 dark:border-emerald-800/50 dark:bg-emerald-950/30"
-          : "border-zinc-200 bg-white/95 dark:border-zinc-700 dark:bg-zinc-950/50"
+          ? "bg-[var(--surface-raised)]"
+          : "bg-[var(--peer-msg-bg)]"
       }`}
     >
       <div className="flex items-start gap-3">
         <ExpertAvatar role={role} size="lg" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {role.title}
-          </p>
+          <p className="text-sm font-medium text-[var(--text-primary)]">{role.title}</p>
           {role.background ? (
             <p
               ref={backgroundRef}
-              className={`mt-0.5 text-xs leading-snug text-zinc-600 dark:text-zinc-400 ${
+              className={`mt-0.5 text-xs leading-snug text-[var(--text-secondary)] ${
                 expanded ? "" : "line-clamp-2"
               }`}
             >
@@ -73,7 +71,7 @@ export function ExpertInviteCard({
       </div>
       <p
         ref={mandateRef}
-        className={`mt-2 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400 ${
+        className={`mt-2 text-xs leading-relaxed text-[var(--text-tertiary)] ${
           expanded ? "" : "line-clamp-3"
         }`}
       >
@@ -83,7 +81,7 @@ export function ExpertInviteCard({
         <button
           type="button"
           onClick={() => setExpanded((v) => !v)}
-          className="mt-1 self-start text-xs font-medium text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="mt-1 self-start text-xs text-[var(--text-tertiary)] transition hover:text-[var(--text-secondary)]"
         >
           {expanded ? "Show less" : "Show more"}
         </button>
@@ -93,10 +91,10 @@ export function ExpertInviteCard({
         disabled={disabled}
         onClick={onToggleInvite}
         aria-pressed={invited}
-        className={`mt-3 w-full rounded-full px-3 py-1.5 text-xs font-semibold transition-colors disabled:opacity-50 ${
+        className={`mt-3 w-full rounded-full px-3 py-2 text-xs font-medium transition disabled:opacity-40 ${
           invited
-            ? "bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-600 dark:hover:bg-emerald-500"
-            : "border border-zinc-300 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            ? "bg-[var(--accent)] text-[var(--accent-fg)] hover:opacity-90"
+            : "bg-[var(--surface-invite-btn)] text-[var(--text-primary)] hover:opacity-90"
         }`}
       >
         {invited ? "Invited" : "Invite"}

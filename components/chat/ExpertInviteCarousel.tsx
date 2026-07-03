@@ -50,19 +50,17 @@ export function ExpertInviteCarousel({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Suggested experts
-        </p>
+        <p className="text-xs font-medium text-[var(--text-tertiary)]">Suggested experts</p>
         {roles.length > 1 ? (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-0.5">
             <button
               type="button"
               onClick={() => scrollByCard(-1)}
               disabled={activeIndex === 0}
               aria-label="Previous expert"
-              className="rounded-full p-1 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
+              className="rounded-md p-1 text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] disabled:opacity-30"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
                 <path d="M15 18l-6-6 6-6" />
               </svg>
             </button>
@@ -71,9 +69,9 @@ export function ExpertInviteCarousel({
               onClick={() => scrollByCard(1)}
               disabled={activeIndex >= roles.length - 1}
               aria-label="Next expert"
-              className="rounded-full p-1 text-zinc-500 hover:bg-zinc-100 disabled:opacity-30 dark:hover:bg-zinc-800"
+              className="rounded-md p-1 text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)] disabled:opacity-30"
             >
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.75">
                 <path d="M9 18l6-6-6-6" />
               </svg>
             </button>
@@ -81,11 +79,11 @@ export function ExpertInviteCarousel({
         ) : null}
       </div>
 
-      <div className="relative -mx-1">
+      <div className="relative">
         <div
           ref={scrollRef}
           onScroll={updateActiveIndex}
-          className="flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-1 scrollbar-thin"
+          className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         >
           {roles.map((role) => (
             <ExpertInviteCard
@@ -109,10 +107,10 @@ export function ExpertInviteCarousel({
               aria-selected={i === activeIndex}
               aria-label={`${role.title}${invitedSet.has(role.id) ? ", invited" : ""}`}
               onClick={() => scrollToIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
+              className={`h-1 rounded-full transition-all ${
                 i === activeIndex
-                  ? "w-4 bg-zinc-600 dark:bg-zinc-300"
-                  : "w-1.5 bg-zinc-300 dark:bg-zinc-600"
+                  ? "w-3 bg-[var(--text-primary)]"
+                  : "w-1 bg-[var(--border-medium)]"
               }`}
             />
           ))}

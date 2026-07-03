@@ -23,11 +23,11 @@ export function ChatChairMessage({
       showAvatar={showAvatar}
       showName={showName}
     >
-      <p className="whitespace-pre-wrap text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">
+      <p className="whitespace-pre-wrap">
         {content}
         {streaming ? (
           <span
-            className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-zinc-400 align-middle dark:bg-zinc-500"
+            className="ml-0.5 inline-block h-3.5 w-px animate-pulse bg-[var(--text-tertiary)] align-middle"
             aria-hidden
           />
         ) : null}
