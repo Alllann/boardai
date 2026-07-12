@@ -1,19 +1,12 @@
 "use client";
 
-import {
-  SelectableExplain,
-  type ExplainContextParams,
-} from "@/components/SelectableExplain";
-import type { BriefingSection as BriefingSectionId, GlossaryEntry } from "@/lib/schemas";
+import { GlossaryText } from "@/components/GlossaryText";
+import type { GlossaryEntry } from "@/lib/schemas";
 
 type Props = {
   title: string;
   text: string;
-  section: BriefingSectionId;
-  sectionIndex?: number;
   glossaryEntries: GlossaryEntry[];
-  explainContext: ExplainContextParams;
-  explainDisabled: boolean;
   asListItem?: boolean;
   titleTone?: "default" | "warning";
 };
@@ -21,29 +14,11 @@ type Props = {
 export function BriefingSection({
   title,
   text,
-  section,
-  sectionIndex,
   glossaryEntries,
-  explainContext,
-  explainDisabled,
   asListItem = false,
   titleTone = "default",
 }: Props) {
-  const context: ExplainContextParams = {
-    ...explainContext,
-    source: "briefing",
-    section,
-    sectionIndex,
-  };
-
-  const body = (
-    <SelectableExplain
-      text={text}
-      glossaryEntries={glossaryEntries}
-      context={context}
-      disabled={explainDisabled}
-    />
-  );
+  const body = <GlossaryText text={text} entries={glossaryEntries} />;
 
   if (asListItem) {
     return <li className="text-sm">{body}</li>;

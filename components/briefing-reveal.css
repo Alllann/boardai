@@ -1,0 +1,357 @@
+/* Scoped overrides for embedded briefing deck only */
+.briefing-reveal-shell {
+  --briefing-bg-default: color-mix(in srgb, var(--peer-msg-bg) 92%, var(--text-primary) 8%);
+  --briefing-bg-hero: color-mix(in srgb, var(--peer-msg-bg) 88%, var(--text-primary) 12%);
+  --briefing-bg-quote: color-mix(in srgb, var(--peer-msg-bg) 90%, var(--text-primary) 10%);
+  --briefing-bg-risk: color-mix(in srgb, var(--peer-msg-bg) 94%, #c2410c 6%);
+  --briefing-bg-experiment: color-mix(in srgb, var(--peer-msg-bg) 94%, #2563eb 6%);
+  --briefing-bg-plan: color-mix(in srgb, var(--peer-msg-bg) 92%, #059669 8%);
+  --briefing-bg-question: color-mix(in srgb, var(--peer-msg-bg) 93%, #7c3aed 7%);
+  --briefing-bg-warning: color-mix(in srgb, var(--peer-msg-bg) 90%, #d97706 10%);
+
+  position: relative;
+  height: 24rem;
+  min-height: 20rem;
+  overflow: hidden;
+  outline: none;
+}
+
+.briefing-reveal-shell:focus-visible {
+  box-shadow: 0 0 0 2px var(--ring);
+}
+
+.briefing-reveal-shell > div,
+.briefing-reveal-shell .reveal.reveal-viewport {
+  height: 100% !important;
+  width: 100% !important;
+}
+
+.briefing-reveal-shell .reveal-viewport {
+  height: 100%;
+  position: relative;
+  overflow: hidden;
+  background: transparent !important;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .reveal {
+  height: 100%;
+  font-family: var(--font-sans);
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .reveal .backgrounds {
+  z-index: 0;
+}
+
+.briefing-reveal-shell .reveal .slide-background-content {
+  background: transparent !important;
+}
+
+.briefing-reveal-shell .reveal .slides {
+  text-align: left;
+}
+
+.briefing-reveal-shell .briefing-slide-inner {
+  position: relative;
+  z-index: 1;
+  height: 100%;
+  overflow-y: auto;
+  padding: 1.25rem 1.35rem 3rem;
+  box-sizing: border-box;
+  text-align: left;
+}
+
+.briefing-reveal-shell .briefing-slide-hero .briefing-slide-inner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 1.5rem;
+  padding-bottom: 3rem;
+}
+
+/* Shared header */
+.briefing-reveal-shell .briefing-slide-header {
+  margin-bottom: 0.85rem;
+}
+
+.briefing-reveal-shell .briefing-slide-subtitle {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  line-height: 1.25rem;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.briefing-reveal-shell .briefing-slide-title {
+  margin: 0.2rem 0 0;
+  font-size: 1.125rem;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .briefing-slide-page-label {
+  margin: 0.35rem 0 0;
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+}
+
+/* Hero slide */
+.briefing-reveal-shell .briefing-hero {
+  width: 100%;
+  max-width: 34rem;
+  gap: 0.65rem;
+  text-align: center;
+}
+
+.briefing-reveal-shell .briefing-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.briefing-reveal-shell .briefing-hero-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .briefing-hero-headline {
+  margin-top: 0.35rem;
+  font-size: 1.125rem;
+  font-weight: 500;
+  line-height: 1.5;
+  color: var(--text-primary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 5;
+  overflow: hidden;
+}
+
+@media (min-width: 768px) {
+  .briefing-reveal-shell .briefing-hero-headline {
+    font-size: 1.3125rem;
+  }
+}
+
+/* Card list slides */
+.briefing-reveal-shell .briefing-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing-reveal-shell .briefing-card {
+  border: 1px solid color-mix(in srgb, var(--border-medium) 70%, transparent);
+  border-radius: calc(var(--radius-soft) - 2px);
+  background: color-mix(in srgb, var(--peer-msg-bg) 70%, var(--surface-raised) 30%);
+  padding: 0.65rem 0.75rem;
+}
+
+.briefing-reveal-shell .briefing-card-lead {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .briefing-card-detail {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+/* Timeline / plan slide */
+.briefing-reveal-shell .briefing-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.briefing-reveal-shell .briefing-timeline-row {
+  display: grid;
+  grid-template-columns: 4.25rem minmax(0, 1fr);
+  gap: 0.65rem;
+  align-items: start;
+}
+
+.briefing-reveal-shell .briefing-timeline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 1.75rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--text-primary) 10%, transparent);
+  padding: 0.15rem 0.45rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .briefing-timeline-body {
+  border-left: 2px solid color-mix(in srgb, var(--text-primary) 16%, transparent);
+  padding-left: 0.65rem;
+}
+
+.briefing-reveal-shell .briefing-timeline-lead {
+  margin: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .briefing-timeline-detail {
+  margin: 0.2rem 0 0;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.briefing-reveal-shell .briefing-quote {
+  margin: 0.25rem 0 0;
+  border-left: 3px solid color-mix(in srgb, var(--text-primary) 22%, transparent);
+  padding: 0.35rem 0 0.35rem 0.9rem;
+  font-size: 0.9375rem;
+  font-style: italic;
+  line-height: 1.55;
+  color: var(--text-secondary);
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 8;
+  overflow: hidden;
+}
+
+/* Warning / dissent slide */
+.briefing-reveal-shell .briefing-callout {
+  border: 1px solid color-mix(in srgb, #d97706 35%, var(--border-medium));
+  border-radius: calc(var(--radius-soft) - 2px);
+  background: color-mix(in srgb, var(--peer-msg-bg) 80%, #d97706 8%);
+  padding: 0.75rem 0.85rem;
+}
+
+.briefing-reveal-shell .briefing-callout .text-sm {
+  font-size: 0.875rem;
+}
+
+/* Hero entrance */
+.briefing-reveal-shell .slides section.present.briefing-slide-hero .briefing-kicker {
+  animation: briefing-fade-down 0.45s ease both;
+}
+
+.briefing-reveal-shell .slides section.present.briefing-slide-hero .briefing-hero-title {
+  animation: briefing-fade-in 0.5s ease 0.08s both;
+}
+
+.briefing-reveal-shell .slides section.present.briefing-slide-hero .briefing-hero-headline {
+  animation: briefing-fade-up 0.55s ease 0.16s both;
+}
+
+/* Card / timeline stagger on slide enter */
+.briefing-reveal-shell .slides section.present .briefing-card,
+.briefing-reveal-shell .slides section.present .briefing-timeline-row {
+  animation: briefing-fade-up 0.45s ease both;
+}
+
+.briefing-reveal-shell .slides section.present .briefing-quote,
+.briefing-reveal-shell .slides section.present .briefing-callout {
+  animation: briefing-fade-up 0.5s ease 0.1s both;
+}
+
+@keyframes briefing-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes briefing-fade-down {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes briefing-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Controls */
+.briefing-reveal-shell .reveal .progress {
+  height: 3px;
+  color: var(--text-primary);
+}
+
+.briefing-reveal-shell .reveal .controls {
+  color: var(--text-secondary);
+}
+
+.briefing-reveal-shell .reveal .controls button {
+  color: var(--text-secondary);
+}
+
+.briefing-reveal-shell .reveal .slide-number {
+  font-size: 0.6875rem;
+  color: var(--text-tertiary);
+  background: transparent;
+}
+
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child {
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+}
+
+.briefing-reveal-shell .reveal:not(.ready) .controls,
+.briefing-reveal-shell .reveal:not(.ready) .progress,
+.briefing-reveal-shell .reveal:not(.ready) .slide-number {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-kicker,
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-hero-title,
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-hero-headline,
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-card,
+.briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-timeline-row {
+  opacity: 1 !important;
+  transform: none !important;
+}

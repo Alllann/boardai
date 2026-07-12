@@ -18,14 +18,9 @@ export const GLOSSARY_RESPONSE_SAFETY_CAP = 200;
 /** Chair briefing key takeaway bullet (model may overshoot; we clamp). */
 export const MAX_TAKEAWAY_CHARS = 280;
 
-/** On-demand explain: selection length bounds (characters). */
-export const EXPLAIN_MIN_SELECTION_CHARS = 8;
-export const EXPLAIN_MAX_SELECTION_CHARS = 500;
-export const MAX_ON_DEMAND_EXPLAIN_CHARS = 900;
-
 /** Shown immediately when a session starts, before the first API response. */
 export const CHAIR_CONVENING_MESSAGE =
-  "I'm convening the board and reviewing your brief…";
+  "I'm reviewing your brief…";
 
 /** Reader guide eval prompts. */
 export const MAX_READER_EXPLANATION_CHARS = 600;

@@ -80,17 +80,3 @@ body {
   background: var(--surface-input);
   box-shadow: var(--shadow-soft);
 }
-
-@keyframes explain-pending-glow {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 color-mix(in srgb, var(--text-tertiary) 30%, transparent);
-  }
-  50% {
-    box-shadow: 0 0 6px 1px color-mix(in srgb, var(--text-tertiary) 40%, transparent);
-  }
-}
-
-.explain-pending-glow {
-  animation: explain-pending-glow 1.4s ease-in-out infinite;
-}

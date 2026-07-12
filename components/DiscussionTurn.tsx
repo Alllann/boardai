@@ -4,12 +4,9 @@ import { useState } from "react";
 
 import { ExpertAvatar } from "@/components/ExpertAvatar";
 import { ExpertProfilePopover } from "@/components/ExpertProfilePopover";
+import { MarkdownContent } from "@/components/MarkdownContent";
 import { ChatParticipantTurn } from "@/components/chat/ChatParticipantTurn";
 import { GlossaryText } from "@/components/GlossaryText";
-import {
-  SelectableExplain,
-  type ExplainContextParams,
-} from "@/components/SelectableExplain";
 import type { GlossaryEntry, MeetingPlan, TranscriptTurn } from "@/lib/schemas";
 import type { ChatGroupFlags } from "@/lib/chat-grouping";
 
@@ -17,8 +14,6 @@ type Props = {
   turn: TranscriptTurn;
   role: MeetingPlan["roles"][number] | undefined;
   glossaryEntries: GlossaryEntry[];
-  explainContext?: ExplainContextParams;
-  explainDisabled?: boolean;
   streaming?: boolean;
 } & ChatGroupFlags;
 
@@ -26,8 +21,6 @@ export function DiscussionTurn({
   turn,
   role,
   glossaryEntries,
-  explainContext,
-  explainDisabled = false,
   streaming = false,
   showAvatar = true,
   showName = true,
@@ -40,14 +33,6 @@ export function DiscussionTurn({
     mandate: "Expert on this board.",
     background: undefined,
   };
-
-  const context: ExplainContextParams | undefined = explainContext
-    ? {
-        ...explainContext,
-        source: "transcript",
-        turnId: turn.id,
-      }
-    : undefined;
 
   return (
     <ChatParticipantTurn
@@ -78,13 +63,10 @@ export function DiscussionTurn({
             aria-hidden
           />
         </p>
-      ) : context ? (
-        <SelectableExplain
+      ) : glossaryEntries.length > 0 ? (
+        <MarkdownContent
           text={turn.content}
           glossaryEntries={glossaryEntries}
-          context={context}
-          disabled={explainDisabled}
-          markdown
           className="text-[var(--text-primary)]"
         />
       ) : (

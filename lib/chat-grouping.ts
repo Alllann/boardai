@@ -11,6 +11,7 @@ export function getThreadSpeaker(item: ThreadItem): string | null {
       return "owner";
     case "chair":
     case "status":
+    case "briefing":
       return "chair";
     case "expert":
       return `expert:${item.roleId}`;

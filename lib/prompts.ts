@@ -2,7 +2,25 @@ import { BOARD_AUDIENCE_INSTRUCTIONS, EXPERT_STRUCTURE_RULES } from "./board-aud
 import { MAX_ROLES, MAX_TURNS, MIN_ROLES } from "./board-constants";
 
 export function chairMeetingPlanPrompt(userBrief: string): string {
-  return `You are the Chair of an advisory board. Your job in THIS message only is to DESIGN the meeting: pick the minimal expert roster and a turn-by-turn speaking schedule for the brief below.
+  return `You are the Chair of an advisory board.
+
+STEP 1 — Decide if the brief is enough to convene a board session.
+Convene ONLY when the owner has shared a real decision, plan, challenge, or question the board can stress-test (topic + enough context to pick experts).
+
+Do NOT convene when the message is insufficient, for example:
+- Greetings only ("Hello", "Hi", "Hey there")
+- Pleasantries or filler with no ask ("Thanks", "Ok", "Sounds good")
+- Too vague to pick experts ("What do you think?", "Any advice?", "Help me")
+- A single short phrase with no decision or domain
+
+If insufficient, output ONLY this JSON (no roles, no meeting goal):
+{
+  "briefSufficient": false,
+  "chairMessage": "1–3 warm sentences asking what decision or question they want the board to stress-test. Give a concrete example of a good brief. Do not invent experts or a meeting plan."
+}
+
+STEP 2 — If the brief IS sufficient, design the meeting.
+Pick the minimal expert roster and turn-by-turn schedule for the brief below.
 
 User brief:
 ---
@@ -26,6 +44,7 @@ Confirmation flags (required):
 
 Output ONLY valid JSON (no markdown, no commentary) matching this shape:
 {
+  "briefSufficient": true,
   "roles": [{ "id": "string", "title": "string", "mandate": "string", "background": "string" }],
   "turnSchedule": ["role_id", "..."],
   "meetingGoal": "string",

@@ -27,6 +27,7 @@ import type {
 } from "./schemas";
 import {
   briefingSchema,
+  chairBriefClarificationSchema,
   chairRouteSchema,
   meetingPlanSchema,
   meetingProposalSchema,
@@ -56,7 +57,21 @@ export async function runBoardSessionWithEvents(
     return;
   }
 
-  const proposal = await generateMeetingProposal(userBrief, options);
+  const kickoff = await generateChairKickoff(userBrief, options);
+  if (kickoff.type === "clarification") {
+    await sink({
+      type: "chair_message",
+      payload: {
+        id: crypto.randomUUID(),
+        content: kickoff.chairMessage,
+        roundId: 0,
+      },
+    });
+    await sink({ type: "awaiting_brief" });
+    return;
+  }
+
+  const proposal = kickoff.proposal;
   await sink({ type: "meeting_proposal", payload: proposal });
   const reason =
     proposal.goalNeedsConfirmation && proposal.rosterNeedsConfirmation
@@ -74,6 +89,11 @@ export async function resumeBoardSessionWithEvents(
   abortSignal?: AbortSignal,
 ): Promise<void> {
   const options = getAgentOptions();
+
+  if (action.action === "brief_reply") {
+    await runBoardSessionWithEvents(ctx.userBrief.trim(), sink, undefined, abortSignal);
+    return;
+  }
 
   if (action.action === "approve_proposal" && ctx.pendingProposal) {
     const plan = planFromProposalWithInvites(ctx.pendingProposal, action.invitedRoleIds);
@@ -546,6 +566,25 @@ function parseMeetingPlanJson(raw: string): MeetingPlan {
   return meetingPlanSchema.parse(data);
 }
 
+function parseChairKickoffJson(
+  raw: string,
+  id?: string,
+):
+  | { type: "clarification"; chairMessage: string }
+  | { type: "proposal"; proposal: MeetingProposal } {
+  const jsonStr = extractJsonObject(raw);
+  const data: unknown = JSON.parse(jsonStr);
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    (data as { briefSufficient?: boolean }).briefSufficient === false
+  ) {
+    const clarification = chairBriefClarificationSchema.parse(data);
+    return { type: "clarification", chairMessage: clarification.chairMessage };
+  }
+  return { type: "proposal", proposal: parseMeetingProposalJson(raw, id) };
+}
+
 function parseMeetingProposalJson(raw: string, id?: string): MeetingProposal {
   const jsonStr = extractJsonObject(raw);
   const data: unknown = JSON.parse(jsonStr);
@@ -644,10 +683,14 @@ function formatTranscriptForPrompt(
   return parts.join("\n\n");
 }
 
-async function generateMeetingProposal(
+async function generateChairKickoff(
   userBrief: string,
   options: AgentOptions,
-): Promise<MeetingProposal> {
+):
+  Promise<
+    | { type: "clarification"; chairMessage: string }
+    | { type: "proposal"; proposal: MeetingProposal }
+  > {
   let lastErr = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     const prompt =
@@ -655,17 +698,28 @@ async function generateMeetingProposal(
         ? chairMeetingPlanPrompt(userBrief)
         : chairMeetingPlanRetryPrompt(userBrief, lastErr);
     const { text, runId } = await runPromptForText(prompt, options);
-    console.info("[board] meeting proposal run", runId);
+    console.info("[board] chair kickoff run", runId);
     try {
-      return parseMeetingProposalJson(text);
+      return parseChairKickoffJson(text);
     } catch (e) {
       lastErr = e instanceof Error ? e.message : String(e);
       if (attempt === 1) {
-        throw new Error(`Invalid meeting proposal JSON: ${lastErr}`);
+        throw new Error(`Invalid chair kickoff JSON: ${lastErr}`);
       }
     }
   }
   throw new Error("Unreachable");
+}
+
+async function generateMeetingProposal(
+  userBrief: string,
+  options: AgentOptions,
+): Promise<MeetingProposal> {
+  const kickoff = await generateChairKickoff(userBrief, options);
+  if (kickoff.type === "clarification") {
+    throw new Error("Brief insufficient for meeting proposal");
+  }
+  return kickoff.proposal;
 }
 
 async function reviseMeetingProposal(

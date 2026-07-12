@@ -184,6 +184,13 @@ export function useBoardStream(sessionId: string) {
               });
               break;
             }
+            case "awaiting_brief":
+              patchSession(sessionId, {
+                status: "awaiting_brief",
+                phase: "kickstart",
+                pendingProposal: null,
+              });
+              break;
             case "awaiting_user":
               patchSession(sessionId, { status: "awaiting_user", phase: "kickstart" });
               break;
@@ -328,7 +335,11 @@ export function useBoardStream(sessionId: string) {
 
         if (streamFinished && !controller.signal.aborted) {
           const final = loadSession(sessionId);
-          if (final && final.status === "running") {
+          if (
+            final &&
+            final.status === "running" &&
+            final.phase !== "kickstart"
+          ) {
             patchSession(sessionId, { status: "idle", phase: "idle" });
             bump();
           }
@@ -392,6 +403,35 @@ export function useBoardStream(sessionId: string) {
         action: "approve_proposal",
         invitedRoleIds,
         ...buildStreamContext(current),
+      });
+    },
+    [sessionId, consumeStream, bump],
+  );
+
+  const sendBriefReply = useCallback(
+    async (message: string) => {
+      const current = loadSession(sessionId);
+      if (!message.trim() || !current) return;
+
+      const updatedBrief = `${current.brief}\n\n${message.trim()}`.trim();
+      const userItem: ThreadItem = {
+        kind: "user",
+        id: crypto.randomUUID(),
+        content: message.trim(),
+        timestamp: Date.now(),
+        roundId: 0,
+      };
+      patchSession(sessionId, {
+        brief: updatedBrief,
+        thread: [...current.thread, userItem],
+        status: "running",
+      });
+      bump();
+
+      await consumeStream({
+        action: "brief_reply",
+        message: message.trim(),
+        ...buildStreamContext({ ...current, brief: updatedBrief }),
       });
     },
     [sessionId, consumeStream, bump],
@@ -534,6 +574,7 @@ export function useBoardStream(sessionId: string) {
     revision,
     runStream,
     approveProposal,
+    sendBriefReply,
     sendProposalReply,
     sendFollowUp,
     interruptDiscussion,

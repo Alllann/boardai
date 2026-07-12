@@ -15,13 +15,7 @@ import { DiscussionTypingIndicator } from "@/components/DiscussionTypingIndicato
 import { ThreadHeader } from "@/components/shell/ThreadHeader";
 import { GlossarySidebar, GlossarySidebarRail } from "@/components/shell/GlossarySidebar";
 import { useShell } from "@/components/shell/ShellContext";
-import type { ExplainContextParams } from "@/components/SelectableExplain";
 import { useBoardStream } from "@/hooks/useBoardStream";
-import {
-  buildBriefingSnippet,
-  buildMeetingGoal,
-  buildTranscriptSnippet,
-} from "@/lib/explain-context";
 import {
   getContinuationFlags,
   getGroupFlags,
@@ -51,6 +45,7 @@ export function BoardChatView({ sessionId }: Props) {
   const {
     state,
     approveProposal,
+    sendBriefReply,
     sendProposalReply,
     sendFollowUp,
     interruptDiscussion,
@@ -117,20 +112,6 @@ export function BoardChatView({ sessionId }: Props) {
     return map;
   }, [meetingPlan]);
 
-  const explainDisabled = !brief.trim();
-
-  const baseExplainContext = useMemo((): ExplainContextParams | undefined => {
-    const userBrief = brief.trim();
-    if (!userBrief) return undefined;
-    return {
-      source: "transcript",
-      userBrief,
-      meetingGoal: buildMeetingGoal(meetingPlan),
-      transcriptSnippet: buildTranscriptSnippet(turns),
-      briefingSnippet: briefing ? buildBriefingSnippet(briefing) : undefined,
-    };
-  }, [brief, meetingPlan, turns, briefing]);
-
   useEffect(() => {
     setHydrated(true);
   }, []);
@@ -144,11 +125,12 @@ export function BoardChatView({ sessionId }: Props) {
   const showKickoffProgress = useMemo(
     () =>
       loading &&
+      status !== "awaiting_brief" &&
       !meetingPlan &&
       !pendingProposal &&
       !streamingChair &&
       !streamingTurn,
-    [loading, meetingPlan, pendingProposal, streamingChair, streamingTurn],
+    [loading, status, meetingPlan, pendingProposal, streamingChair, streamingTurn],
   );
 
   const discussionInProgress =
@@ -223,6 +205,7 @@ export function BoardChatView({ sessionId }: Props) {
   const glossaryEntries = glossary?.entries ?? [];
 
   const composerEnabled =
+    status === "awaiting_brief" ||
     status === "awaiting_user" ||
     discussionInProgress ||
     (!loading && status === "idle" && !!meetingPlan && !!glossary);
@@ -232,6 +215,8 @@ export function BoardChatView({ sessionId }: Props) {
     if (!msg) return;
     if (discussionInProgress) {
       void interruptDiscussion(msg);
+    } else if (status === "awaiting_brief") {
+      void sendBriefReply(msg);
     } else if (status === "awaiting_user" && pendingProposal) {
       void sendProposalReply(msg);
     } else if (status === "idle" && !loading) {
@@ -316,18 +301,33 @@ export function BoardChatView({ sessionId }: Props) {
       );
     }
 
-    if (item.kind === "proposal" && item.status === "pending" && pendingProposal) {
-      return (
-        <ChatProposalCard
-          key={key}
-          proposal={pendingProposal}
-          invitedRoleIds={invitedRoleIds}
-          onInvitedChange={setInvitedRoleIds}
-          onApprove={() => void approveProposal(invitedRoleIds)}
-          onSuggestChanges={handleSuggestChanges}
-          loading={loading}
-        />
-      );
+    if (item.kind === "proposal") {
+      if (item.status === "approved") {
+        const approvedInvites =
+          item.invitedRoleIds ?? meetingPlan?.roles.map((r) => r.id) ?? [];
+        return (
+          <ChatProposalCard
+            key={key}
+            proposal={item.payload}
+            invitedRoleIds={approvedInvites}
+            locked
+          />
+        );
+      }
+
+      if (item.status === "pending" && pendingProposal) {
+        return (
+          <ChatProposalCard
+            key={key}
+            proposal={pendingProposal}
+            invitedRoleIds={invitedRoleIds}
+            onInvitedChange={setInvitedRoleIds}
+            onApprove={() => void approveProposal(invitedRoleIds)}
+            onSuggestChanges={handleSuggestChanges}
+            loading={loading}
+          />
+        );
+      }
     }
 
     if (item.kind === "expert") {
@@ -337,15 +337,6 @@ export function BoardChatView({ sessionId }: Props) {
           turn={item}
           role={roleById.get(item.roleId)}
           glossaryEntries={glossaryEntries}
-          explainContext={
-            baseExplainContext
-              ? {
-                  ...baseExplainContext,
-                  transcriptSnippet: buildTranscriptSnippet(turns, item.id),
-                }
-              : undefined
-          }
-          explainDisabled={explainDisabled}
           showAvatar={group.showAvatar}
           showName={group.showName}
         />
@@ -363,14 +354,14 @@ export function BoardChatView({ sessionId }: Props) {
       );
     }
 
-    if (item.kind === "briefing" && baseExplainContext) {
+    if (item.kind === "briefing") {
       return (
         <ChatBriefingCard
           key={key}
           briefing={item.payload}
           glossaryEntries={glossaryEntries}
-          explainContext={baseExplainContext}
-          explainDisabled={explainDisabled}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
         />
       );
     }
@@ -456,15 +447,6 @@ export function BoardChatView({ sessionId }: Props) {
           turn={t}
           role={roleById.get(t.roleId)}
           glossaryEntries={glossaryEntries}
-          explainContext={
-            baseExplainContext
-              ? {
-                  ...baseExplainContext,
-                  transcriptSnippet: buildTranscriptSnippet(turns, t.id),
-                }
-              : undefined
-          }
-          explainDisabled={explainDisabled}
           showAvatar={group.showAvatar}
           showName={group.showName}
         />,
@@ -489,15 +471,16 @@ export function BoardChatView({ sessionId }: Props) {
       );
     }
 
-    if (briefing && baseExplainContext) {
-      lastSpeaker = null;
+    if (briefing) {
+      const group = getContinuationFlags(lastSpeaker, "chair");
+      lastSpeaker = "chair";
       items.push(
         <ChatBriefingCard
           key="briefing"
           briefing={briefing}
           glossaryEntries={glossaryEntries}
-          explainContext={baseExplainContext}
-          explainDisabled={explainDisabled}
+          showAvatar={group.showAvatar}
+          showName={group.showName}
         />,
       );
     }
@@ -507,7 +490,10 @@ export function BoardChatView({ sessionId }: Props) {
 
   const renderThreadTimeline = () => {
     const items: ReactNode[] = [];
-    let inviteShown = false;
+    const hasApprovedProposal = thread.some(
+      (t) => t.kind === "proposal" && t.status === "approved",
+    );
+    let inviteShown = hasApprovedProposal;
     const speakers = thread.map(getThreadSpeaker);
 
     for (let index = 0; index < thread.length; index++) {
@@ -575,9 +561,11 @@ export function BoardChatView({ sessionId }: Props) {
 
   const composerPlaceholder = discussionInProgress
     ? "Join the discussion…"
-    : status === "awaiting_user"
-      ? "Suggest a different goal or roster…"
-      : undefined;
+    : status === "awaiting_brief"
+      ? "Share the decision or question for the board…"
+      : status === "awaiting_user"
+        ? "Suggest a different goal or roster…"
+        : undefined;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">

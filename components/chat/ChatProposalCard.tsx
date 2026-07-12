@@ -10,10 +10,11 @@ import type { MeetingProposal } from "@/lib/schemas";
 type Props = {
   proposal: MeetingProposal;
   invitedRoleIds: string[];
-  onInvitedChange: (ids: string[]) => void;
-  onApprove: () => void;
-  onSuggestChanges: () => void;
+  onInvitedChange?: (ids: string[]) => void;
+  onApprove?: () => void;
+  onSuggestChanges?: () => void;
   loading?: boolean;
+  locked?: boolean;
 };
 
 export function ChatProposalCard({
@@ -23,10 +24,13 @@ export function ChatProposalCard({
   onApprove,
   onSuggestChanges,
   loading = false,
+  locked = false,
 }: Props) {
   const canStart = invitedRoleIds.length >= MIN_ROLES;
+  const interactionsDisabled = loading || locked;
 
   const toggleInvite = (roleId: string) => {
+    if (interactionsDisabled || !onInvitedChange) return;
     const invitedSet = new Set(invitedRoleIds);
     if (invitedSet.has(roleId)) {
       onInvitedChange(invitedRoleIds.filter((id) => id !== roleId));
@@ -63,33 +67,40 @@ export function ChatProposalCard({
             roles={proposal.roles}
             invitedRoleIds={invitedRoleIds}
             onToggleInvite={toggleInvite}
-            disabled={loading}
+            disabled={interactionsDisabled}
           />
 
-          {!canStart ? (
+          {!locked && !canStart ? (
             <p className="text-xs text-[var(--text-tertiary)]">
               Invite at least {MIN_ROLES} experts to start.
             </p>
           ) : null}
 
-          <div className="flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={loading || !canStart}
-              onClick={onApprove}
-              className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-medium text-[var(--accent-fg)] transition hover:opacity-90 disabled:opacity-40"
-            >
-              Start session
-            </button>
-            <button
-              type="button"
-              disabled={loading}
-              onClick={onSuggestChanges}
-              className="rounded-full bg-[var(--surface-raised)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-40"
-            >
-              Suggest changes
-            </button>
-          </div>
+          {locked ? (
+            <p className="text-xs text-[var(--text-tertiary)]">
+              {invitedRoleIds.length} expert{invitedRoleIds.length === 1 ? "" : "s"} invited ·
+              session started
+            </p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                disabled={interactionsDisabled || !canStart}
+                onClick={onApprove}
+                className="rounded-lg bg-[var(--accent)] px-4 py-2 text-xs font-medium text-[var(--accent-fg)] transition hover:opacity-90 disabled:opacity-40"
+              >
+                Start session
+              </button>
+              <button
+                type="button"
+                disabled={interactionsDisabled}
+                onClick={onSuggestChanges}
+                className="rounded-full bg-[var(--surface-raised)] px-4 py-2 text-xs font-medium text-[var(--text-secondary)] transition hover:text-[var(--text-primary)] disabled:opacity-40"
+              >
+                Suggest changes
+              </button>
+            </div>
+          )}
         </div>
       </li>
     </>

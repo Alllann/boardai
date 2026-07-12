@@ -21,6 +21,7 @@ export type SessionStatus =
   | "idle"
   | "running"
   | "awaiting_user"
+  | "awaiting_brief"
   | "complete"
   | "error";
 
@@ -82,6 +83,7 @@ function isSummary(v: unknown): v is SessionSummary {
     (o.status === "idle" ||
       o.status === "running" ||
       o.status === "awaiting_user" ||
+      o.status === "awaiting_brief" ||
       o.status === "complete" ||
       o.status === "error")
   );
@@ -136,7 +138,7 @@ export function migrateSession(raw: Record<string, unknown>): BoardSession {
   if (!raw.phase) {
     if (glossary) phase = "idle";
     else if (turns.length > 0 || briefing) phase = "discussion";
-    else if (status === "awaiting_user") phase = "kickstart";
+    else if (status === "awaiting_user" || status === "awaiting_brief") phase = "kickstart";
   }
 
   const thread = (raw.thread as ThreadItem[] | undefined) ?? [];

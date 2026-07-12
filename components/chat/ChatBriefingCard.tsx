@@ -1,45 +1,34 @@
 "use client";
 
+import { ChairAvatar } from "@/components/ChairAvatar";
 import { BriefingSlides } from "@/components/BriefingSlides";
-import type { ExplainContextParams } from "@/components/SelectableExplain";
+import { ChatParticipantTurn } from "@/components/chat/ChatParticipantTurn";
+import type { ChatGroupFlags } from "@/lib/chat-grouping";
 import type { ChairBriefing, GlossaryEntry } from "@/lib/schemas";
 
 type Props = {
   briefing: ChairBriefing;
   glossaryEntries: GlossaryEntry[];
-  explainContext: ExplainContextParams;
-  explainDisabled: boolean;
-};
+} & ChatGroupFlags;
 
 export function ChatBriefingCard({
   briefing,
   glossaryEntries,
-  explainContext,
-  explainDisabled,
+  showAvatar = true,
+  showName = true,
 }: Props) {
-  return (
-    <li className="flex justify-start py-2">
-      <div className="w-full max-w-[min(48rem,95%)] rounded-[var(--radius-soft)] bg-[var(--peer-msg-bg)] px-5 py-4">
-        <div className="mb-4 flex items-center gap-2.5">
-          <span
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[var(--surface-raised)] text-[11px] font-medium text-[var(--text-primary)]"
-            aria-hidden
-          >
-            C
-          </span>
-          <div>
-            <p className="text-sm font-normal text-[var(--text-primary)]">Executive brief</p>
-            <p className="text-xs text-[var(--text-tertiary)]">Swipe or use arrows · select text to explain</p>
-          </div>
-        </div>
+  const bubbleTail = showAvatar ? "rounded-tl-md" : "";
 
-        <BriefingSlides
-          briefing={briefing}
-          glossaryEntries={glossaryEntries}
-          explainContext={explainContext}
-          explainDisabled={explainDisabled}
-        />
-      </div>
-    </li>
+  return (
+    <ChatParticipantTurn
+      avatar={<ChairAvatar size="md" />}
+      title="Chair"
+      subtitle="Facilitator"
+      showAvatar={showAvatar}
+      showName={showName}
+      contentClassName={`block w-full overflow-hidden rounded-[var(--radius-bubble)] bg-[var(--peer-msg-bg)] ${bubbleTail}`}
+    >
+      <BriefingSlides briefing={briefing} glossaryEntries={glossaryEntries} />
+    </ChatParticipantTurn>
   );
 }

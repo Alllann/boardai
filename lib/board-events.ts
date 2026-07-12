@@ -32,6 +32,7 @@ export type BoardEmitEvent =
   | { type: "meeting_plan"; payload: MeetingPlan; roundId?: number }
   | { type: "meeting_proposal"; payload: MeetingProposal }
   | { type: "awaiting_user"; reason: "goal" | "roster" | "both" }
+  | { type: "awaiting_brief" }
   | { type: "chair_start"; payload: ChairStartPayload }
   | { type: "chair_delta"; payload: ChairDeltaPayload }
   | { type: "chair_message"; payload: { id: string; content: string; roundId: number } }
@@ -55,6 +56,7 @@ export type BoardRunResult = {
 
 export type StreamAction =
   | { action: "start" }
+  | { action: "brief_reply"; message: string }
   | { action: "approve_proposal"; invitedRoleIds: string[] }
   | { action: "proposal_reply"; message: string }
   | { action: "follow_up"; message: string }

@@ -4,7 +4,6 @@ import {
   GLOSSARY_RESPONSE_SAFETY_CAP,
   MAX_BRIEF_CHARS,
   MAX_TAKEAWAY_CHARS,
-  MAX_ON_DEMAND_EXPLAIN_CHARS,
   MAX_ROLES,
   MAX_TURNS,
   MIN_ROLES,
@@ -111,34 +110,6 @@ export const briefingSectionSchema = z.enum([
 
 export type BriefingSection = z.infer<typeof briefingSectionSchema>;
 
-export const explainSourceSchema = z.enum(["transcript", "briefing"]);
-
-export const explainRequestSchema = z.object({
-  selection: z.string().min(1).max(500),
-  surroundingParagraph: z.string().max(2000).optional(),
-  source: explainSourceSchema,
-  turnId: z.number().int().positive().optional(),
-  section: briefingSectionSchema.optional(),
-  sectionIndex: z.number().int().nonnegative().optional(),
-  userBrief: z.string().min(1).max(MAX_BRIEF_CHARS),
-  meetingGoal: z.string().max(500).optional(),
-  /** Trimmed transcript context (recent turns). */
-  transcriptSnippet: z.string().max(4000).optional(),
-  /** Trimmed briefing context. */
-  briefingSnippet: z.string().max(2000).optional(),
-});
-
-export type ExplainRequest = z.infer<typeof explainRequestSchema>;
-
-export const explainResponseSchema = z.object({
-  explanation: z
-    .string()
-    .min(1)
-    .transform((s) => clampText(MAX_ON_DEMAND_EXPLAIN_CHARS, s)),
-});
-
-export type ExplainResponse = z.infer<typeof explainResponseSchema>;
-
 export const sessionTimelineEventSchema = z.object({
   id: z.string(),
   message: z.string().min(1).max(200),
@@ -147,6 +118,14 @@ export const sessionTimelineEventSchema = z.object({
 });
 
 export type SessionTimelineEvent = z.infer<typeof sessionTimelineEventSchema>;
+
+/** Chair declines to convene until the owner gives a substantive brief. */
+export const chairBriefClarificationSchema = z.object({
+  briefSufficient: z.literal(false),
+  chairMessage: z.string().min(1).max(1200),
+});
+
+export type ChairBriefClarification = z.infer<typeof chairBriefClarificationSchema>;
 
 export const meetingProposalSchema = meetingPlanSchema
   .extend({

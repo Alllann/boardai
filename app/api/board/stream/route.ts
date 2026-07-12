@@ -97,7 +97,9 @@ export async function POST(req: Request) {
           const streamAction: StreamAction =
             action === "approve_proposal"
               ? { action: "approve_proposal", invitedRoleIds }
-              : action === "proposal_reply"
+              : action === "brief_reply"
+                ? { action: "brief_reply", message }
+                : action === "proposal_reply"
                 ? { action: "proposal_reply", message }
                 : action === "interrupt_discussion"
                   ? { action: "interrupt_discussion", message, scheduleIndex }
