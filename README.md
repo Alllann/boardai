@@ -127,7 +127,6 @@ Open [http://localhost:3000](http://localhost:3000). Start a brief from the home
 
 - [Prompt flow](docs/prompt-flow.md) — chair → experts → briefing → glossary (with diagrams)
 - [Cursor agent on Vercel](docs/cursor-agent-vercel.md) — `HOME` / `/tmp`, Linux SDK, troubleshooting
-- [README intro candidates](docs/readme-intro-candidates.md) — alternate positioning drafts
 
 ---
 
