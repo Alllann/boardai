@@ -8,8 +8,23 @@ export type ParsedPlanItem = {
   text: string;
 };
 
+export type BriefingDensity = "compact" | "expanded";
+
+type SlideLimits = {
+  heroHeadline: number;
+  quoteBody: number;
+  warningBody: number;
+  cardLead: number;
+  cardDetail: number;
+  cardSlideWeight: number;
+  maxCardsPerSlide: number;
+  timelineSlideWeight: number;
+  maxTimelinePerSlide: number;
+  timelineBody: number;
+};
+
 /** Visual density limits for the embedded briefing deck (~24rem tall). */
-export const SLIDE_LIMITS = {
+export const SLIDE_LIMITS: SlideLimits = {
   heroHeadline: 200,
   quoteBody: 240,
   warningBody: 240,
@@ -21,6 +36,24 @@ export const SLIDE_LIMITS = {
   maxTimelinePerSlide: 2,
   timelineBody: 100,
 } as const;
+
+/** Looser limits for the maximized deck — more content per slide. */
+export const SLIDE_LIMITS_EXPANDED: SlideLimits = {
+  heroHeadline: 520,
+  quoteBody: 720,
+  warningBody: 720,
+  cardLead: 180,
+  cardDetail: 360,
+  cardSlideWeight: 900,
+  maxCardsPerSlide: 5,
+  timelineSlideWeight: 860,
+  maxTimelinePerSlide: 5,
+  timelineBody: 280,
+} as const;
+
+export function getSlideLimits(density: BriefingDensity = "compact"): SlideLimits {
+  return density === "expanded" ? SLIDE_LIMITS_EXPANDED : SLIDE_LIMITS;
+}
 
 /** Split "Lead: detail" or "Lead — detail" into scannable card parts. */
 export function parseBriefingItem(text: string): ParsedBriefingItem {
@@ -101,26 +134,37 @@ export function splitTextBlocks(text: string, maxChars: number): string[] {
   return blocks.length > 0 ? blocks : [truncateAtSentence(trimmed, maxChars)];
 }
 
-export function condenseBriefingItem(text: string): ParsedBriefingItem {
+export function condenseBriefingItem(
+  text: string,
+  density: BriefingDensity = "compact",
+): ParsedBriefingItem {
+  const limits = getSlideLimits(density);
   const parsed = parseBriefingItem(text);
-  const lead = truncateAtSentence(parsed.lead, SLIDE_LIMITS.cardLead);
-  const detail = parsed.detail
-    ? truncateAtSentence(parsed.detail, SLIDE_LIMITS.cardDetail)
-    : undefined;
-
-  if (detail && !parsed.lead.includes(":") && !parsed.lead.includes("—")) {
-    return { lead, detail };
+  if (density === "expanded") {
+    return parsed;
   }
+
+  const lead = truncateAtSentence(parsed.lead, limits.cardLead);
+  const detail = parsed.detail
+    ? truncateAtSentence(parsed.detail, limits.cardDetail)
+    : undefined;
 
   return detail ? { lead, detail } : { lead };
 }
 
-export function condensePlanText(text: string): string {
-  return truncateAtSentence(text, SLIDE_LIMITS.timelineBody);
+export function condensePlanText(
+  text: string,
+  density: BriefingDensity = "compact",
+): string {
+  if (density === "expanded") return text.trim();
+  return truncateAtSentence(text, getSlideLimits(density).timelineBody);
 }
 
-export function estimateCardWeight(text: string): number {
-  const parsed = condenseBriefingItem(text);
+export function estimateCardWeight(
+  text: string,
+  density: BriefingDensity = "compact",
+): number {
+  const parsed = condenseBriefingItem(text, density);
   return (
     parsed.lead.length +
     (parsed.detail?.length ?? 0) +
@@ -128,9 +172,16 @@ export function estimateCardWeight(text: string): number {
   );
 }
 
-export function estimateTimelineWeight(text: string, index: number): number {
+export function estimateTimelineWeight(
+  text: string,
+  index: number,
+  density: BriefingDensity = "compact",
+): number {
   const plan = parsePlanItem(text, index);
-  const body = condenseBriefingItem(plan.text);
+  const body = condenseBriefingItem(
+    density === "expanded" ? plan.text : condensePlanText(plan.text, density),
+    density,
+  );
   return plan.dayLabel.length + body.lead.length + (body.detail?.length ?? 0) + 36;
 }
 

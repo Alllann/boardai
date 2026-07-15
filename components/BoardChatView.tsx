@@ -194,14 +194,6 @@ export function BoardChatView({ sessionId }: Props) {
     streamingChair?.content.length,
   ]);
 
-  const copyText = async (label: string, text: string) => {
-    try {
-      await navigator.clipboard.writeText(text);
-    } catch {
-      /* ignore */
-    }
-  };
-
   const glossaryEntries = glossary?.entries ?? [];
 
   const composerEnabled =
@@ -228,29 +220,6 @@ export function BoardChatView({ sessionId }: Props) {
   const handleSuggestChanges = () => {
     composerRef.current?.focus();
   };
-
-  const headerActions = (
-    <>
-      {turns.length > 0 ? (
-        <button
-          type="button"
-          onClick={() => copyText("transcript", JSON.stringify({ turns }, null, 2))}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)]"
-        >
-          Copy JSON
-        </button>
-      ) : null}
-      {briefing ? (
-        <button
-          type="button"
-          onClick={() => copyText("briefing", JSON.stringify(briefing, null, 2))}
-          className="rounded-md px-2.5 py-1 text-xs text-[var(--text-tertiary)] transition hover:bg-[var(--surface-hover)] hover:text-[var(--text-secondary)]"
-        >
-          Briefing
-        </button>
-      ) : null}
-    </>
-  );
 
   const threadItemKey = (item: ThreadItem, index: number): string => {
     switch (item.kind) {
@@ -572,7 +541,6 @@ export function BoardChatView({ sessionId }: Props) {
       <ThreadHeader
         title={title}
         onMenuClick={() => setMobileSidebarOpen(true)}
-        actions={headerActions}
       />
 
       {error ? (

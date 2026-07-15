@@ -1,4 +1,44 @@
 /* Scoped overrides for embedded briefing deck only */
+.briefing-deck-frame {
+  position: relative;
+  width: 100%;
+}
+
+.briefing-deck-modal-body .briefing-deck-frame {
+  display: flex;
+  height: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+}
+
+.briefing-deck-max-btn {
+  position: absolute;
+  top: 0.65rem;
+  right: 0.65rem;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 9999px;
+  border: 1px solid color-mix(in srgb, var(--border-medium) 80%, transparent);
+  background: color-mix(in srgb, var(--surface-raised) 88%, transparent);
+  color: var(--text-secondary);
+  backdrop-filter: blur(6px);
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.briefing-deck-max-btn:hover {
+  background: var(--surface-raised);
+  color: var(--text-primary);
+}
+
+.briefing-deck-max-btn--panel {
+  position: static;
+}
+
 .briefing-reveal-shell {
   --briefing-bg-default: color-mix(in srgb, var(--peer-msg-bg) 92%, var(--text-primary) 8%);
   --briefing-bg-hero: color-mix(in srgb, var(--peer-msg-bg) 88%, var(--text-primary) 12%);
@@ -14,6 +54,22 @@
   min-height: 20rem;
   overflow: hidden;
   outline: none;
+  /* Allow JS swipe handling; avoid parent chat steal on first move */
+  touch-action: manipulation;
+  overscroll-behavior: contain;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.briefing-reveal-shell--placeholder {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.briefing-reveal-shell--expanded {
+  flex: 1 1 auto;
+  height: 100%;
+  min-height: 0;
 }
 
 .briefing-reveal-shell:focus-visible {
@@ -57,16 +113,38 @@
   z-index: 1;
   height: 100%;
   overflow-y: auto;
-  padding: 1.25rem 1.35rem 3rem;
+  overscroll-behavior: contain;
+  /* Extra top/right padding so copy clears the maximize control */
+  padding: 2.75rem 1.35rem 3rem;
   box-sizing: border-box;
   text-align: left;
+  -webkit-user-select: text;
+  user-select: text;
+}
+
+.briefing-reveal-shell--expanded .briefing-slide-inner {
+  padding: 1.5rem 1.5rem 3.5rem;
+}
+
+.briefing-reveal-shell--expanded .briefing-slide-hero .briefing-slide-inner {
+  padding-top: 1.5rem;
+}
+
+@media (min-width: 768px) {
+  .briefing-reveal-shell--expanded .briefing-slide-inner {
+    padding: 2rem 2.25rem 3.75rem;
+  }
+
+  .briefing-reveal-shell--expanded .briefing-slide-hero .briefing-slide-inner {
+    padding-top: 2rem;
+  }
 }
 
 .briefing-reveal-shell .briefing-slide-hero .briefing-slide-inner {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding-top: 1.5rem;
+  padding-top: 2.75rem;
   padding-bottom: 3rem;
 }
 
@@ -354,4 +432,144 @@
 .briefing-reveal-shell .reveal:not(.ready) .slides > section:first-child .briefing-timeline-row {
   opacity: 1 !important;
   transform: none !important;
+}
+
+/* Expanded: show fuller copy without line clamps */
+.briefing-reveal-shell--expanded .briefing-hero {
+  max-width: 42rem;
+}
+
+.briefing-reveal-shell--expanded .briefing-hero-headline,
+.briefing-reveal-shell--expanded .briefing-card-detail,
+.briefing-reveal-shell--expanded .briefing-timeline-detail,
+.briefing-reveal-shell--expanded .briefing-quote {
+  display: block;
+  -webkit-line-clamp: unset;
+  overflow: visible;
+}
+
+.briefing-reveal-shell--expanded .briefing-slide-title {
+  font-size: 1.25rem;
+}
+
+.briefing-reveal-shell--expanded .briefing-hero-headline {
+  font-size: 1.25rem;
+}
+
+.briefing-reveal-shell--expanded .briefing-card-lead,
+.briefing-reveal-shell--expanded .briefing-timeline-lead {
+  font-size: 0.9375rem;
+}
+
+.briefing-reveal-shell--expanded .briefing-quote {
+  font-size: 1.0625rem;
+}
+
+@media (min-width: 768px) {
+  .briefing-reveal-shell--expanded .briefing-hero-headline {
+    font-size: 1.5rem;
+  }
+
+  .briefing-reveal-shell--expanded .briefing-slide-title {
+    font-size: 1.375rem;
+  }
+}
+
+/* Full-screen max modal (mobile + desktop) */
+.briefing-deck-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  height: 100dvh;
+  align-items: stretch;
+  justify-content: center;
+  padding: 0;
+}
+
+.briefing-deck-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: color-mix(in srgb, var(--text-primary) 35%, transparent);
+  backdrop-filter: blur(4px);
+}
+
+.briefing-deck-modal-panel {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--surface-raised);
+  box-shadow: var(--shadow-soft);
+}
+
+.briefing-deck-modal-header {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid var(--border-light);
+  padding: 0.75rem 1rem;
+  padding-top: max(0.75rem, env(safe-area-inset-top));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+
+.briefing-deck-modal-kicker {
+  margin: 0;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-tertiary);
+}
+
+.briefing-deck-modal-title {
+  margin: 0.1rem 0 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.briefing-deck-modal-body {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  padding: 0.5rem;
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+
+@media (min-width: 768px) {
+  .briefing-deck-modal-header {
+    padding: 0.85rem 1.25rem;
+    padding-top: max(0.85rem, env(safe-area-inset-top));
+  }
+
+  .briefing-deck-modal-body {
+    padding: 0.75rem 1rem 1rem;
+  }
+}
+
+/* Larger hit targets for Reveal controls on touch */
+@media (max-width: 767px) {
+  .briefing-reveal-shell .reveal .controls {
+    bottom: 0.35rem;
+    right: 0.35rem;
+  }
+
+  .briefing-reveal-shell .reveal .controls button {
+    transform: scale(1.15);
+    transform-origin: bottom right;
+  }
 }
