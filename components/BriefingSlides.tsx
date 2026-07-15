@@ -35,7 +35,7 @@ type SlideItem = {
   sectionIndex?: number;
 };
 
-type SlideTheme = "hero" | "cards" | "timeline" | "quote" | "warning";
+type SlideTheme = "hero" | "cards" | "timeline" | "milestones" | "quote" | "warning";
 type SlideTransition = "fade" | "slide" | "convex" | "zoom";
 
 export type BriefingSlide = {
@@ -67,25 +67,33 @@ function listSlides(
     theme?: SlideTheme;
     transition?: SlideTransition;
     backgroundColor?: string;
-    pack?: "cards" | "timeline";
+    pack?: "cards" | "timeline" | "milestones";
   } = {},
 ): BriefingSlide[] {
   const limits = getSlideLimits(density);
   const packKind = opts.pack ?? (opts.theme === "timeline" ? "timeline" : "cards");
   const chunks =
-    packKind === "timeline"
-      ? packItemsByWeight(
-          items,
-          (item, index) => estimateTimelineWeight(item.text, index, density),
-          limits.timelineSlideWeight,
-          limits.maxTimelinePerSlide,
-        )
-      : packItemsByWeight(
+    packKind === "milestones"
+      ? // Keep selective milestones on a single slide when possible.
+        packItemsByWeight(
           items,
           (item) => estimateCardWeight(item.text, density),
-          limits.cardSlideWeight,
-          limits.maxCardsPerSlide,
-        );
+          limits.milestoneSlideWeight,
+          limits.maxMilestonesPerSlide,
+        )
+      : packKind === "timeline"
+        ? packItemsByWeight(
+            items,
+            (item, index) => estimateTimelineWeight(item.text, index, density),
+            limits.timelineSlideWeight,
+            limits.maxTimelinePerSlide,
+          )
+        : packItemsByWeight(
+            items,
+            (item) => estimateCardWeight(item.text, density),
+            limits.cardSlideWeight,
+            limits.maxCardsPerSlide,
+          );
 
   return chunks.map((chunk, pageIndex) => ({
     id: chunks.length > 1 ? `${id}-${pageIndex + 1}` : id,
@@ -195,18 +203,23 @@ export function buildBriefingSlides(
       backgroundColor: "var(--briefing-bg-experiment)",
       pack: "cards",
     }),
-    ...listSlides("plan", "Next steps", briefing.sevenDayPlan.map((text, i) => ({
-      text,
-      section: "sevenDayPlan" as const,
-      sectionIndex: i,
-    })), density, {
-      subtitle: "7-day plan",
-      ordered: true,
-      theme: "timeline",
-      transition: "slide",
-      backgroundColor: "var(--briefing-bg-plan)",
-      pack: "timeline",
-    }),
+    ...listSlides(
+      "milestones",
+      "Suggested milestones",
+      briefing.suggestedMilestones.map((text, i) => ({
+        text,
+        section: "suggestedMilestones" as const,
+        sectionIndex: i,
+      })),
+      density,
+      {
+        subtitle: "Do these next",
+        theme: "milestones",
+        transition: "slide",
+        backgroundColor: "var(--briefing-bg-plan)",
+        pack: "milestones",
+      },
+    ),
   );
 
   if (briefing.openQuestions.length > 0) {
@@ -250,11 +263,11 @@ type DeckProps = {
 
 function BriefingSlideHeader({ slide }: { slide: BriefingSlide }) {
   return (
-    <>
+    <header className="briefing-slide-header">
       {slide.subtitle ? <p className="briefing-slide-subtitle">{slide.subtitle}</p> : null}
       <h3 className="briefing-slide-title">{slide.title}</h3>
       {slide.pageLabel ? <p className="briefing-slide-page-label">{slide.pageLabel}</p> : null}
-    </>
+    </header>
   );
 }
 
@@ -396,6 +409,51 @@ function BriefingWarningSlide({
   );
 }
 
+function BriefingMilestonesSlide({
+  slide,
+  glossaryEntries,
+  density,
+}: {
+  slide: BriefingSlide;
+  glossaryEntries: GlossaryEntry[];
+  density: BriefingDensity;
+}) {
+  if (!slide.items?.length) return null;
+
+  return (
+    <>
+      <BriefingSlideHeader slide={slide} />
+      <ol className="briefing-milestone-list">
+        {slide.items.map((item, i) => {
+          const parsed = condenseBriefingItem(item.text, density);
+          const n = (item.sectionIndex ?? i) + 1;
+          return (
+            <li
+              key={`${slide.id}-${i}`}
+              className="briefing-milestone"
+              style={{ animationDelay: `${i * 70}ms` }}
+            >
+              <span className="briefing-milestone-index" aria-hidden>
+                {n}
+              </span>
+              <div className="briefing-milestone-body">
+                <p className="briefing-milestone-lead">
+                  <GlossaryText text={parsed.lead} entries={glossaryEntries} />
+                </p>
+                {parsed.detail ? (
+                  <p className="briefing-milestone-detail">
+                    <GlossaryText text={parsed.detail} entries={glossaryEntries} />
+                  </p>
+                ) : null}
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </>
+  );
+}
+
 function BriefingSlideBody({
   slide,
   glossaryEntries,
@@ -410,6 +468,10 @@ function BriefingSlideBody({
       return <BriefingHeroSlide slide={slide} glossaryEntries={glossaryEntries} />;
     case "cards":
       return <BriefingCardsSlide slide={slide} glossaryEntries={glossaryEntries} density={density} />;
+    case "milestones":
+      return (
+        <BriefingMilestonesSlide slide={slide} glossaryEntries={glossaryEntries} density={density} />
+      );
     case "timeline":
       return <BriefingTimelineSlide slide={slide} glossaryEntries={glossaryEntries} density={density} />;
     case "quote":
@@ -547,6 +609,7 @@ function BriefingSlidesDeck({
         maxScale: 1,
         controls: true,
         controlsLayout: "bottom-right",
+        controlsBackArrows: "visible",
         progress: true,
         slideNumber: "c/t",
         hash: false,

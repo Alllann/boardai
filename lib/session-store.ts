@@ -127,11 +127,38 @@ export function listSessionSummaries(): SessionSummary[] {
     .sort((a, b) => b.updatedAt - a.updatedAt);
 }
 
+/** Map legacy `sevenDayPlan` → `suggestedMilestones` without re-validating counts. */
+export function normalizeStoredBriefing(raw: unknown): ChairBriefing | null {
+  if (!raw || typeof raw !== "object") return null;
+  const obj = raw as Record<string, unknown>;
+  const milestones = (
+    Array.isArray(obj.suggestedMilestones)
+      ? obj.suggestedMilestones
+      : Array.isArray(obj.sevenDayPlan)
+        ? obj.sevenDayPlan
+        : []
+  ) as string[];
+
+  return {
+    headline: String(obj.headline ?? ""),
+    keyTakeaways: Array.isArray(obj.keyTakeaways) ? (obj.keyTakeaways as string[]) : [],
+    thesis: String(obj.thesis ?? ""),
+    keyRisks: Array.isArray(obj.keyRisks) ? (obj.keyRisks as string[]) : [],
+    experiments: Array.isArray(obj.experiments) ? (obj.experiments as string[]) : [],
+    suggestedMilestones: milestones,
+    openQuestions: Array.isArray(obj.openQuestions) ? (obj.openQuestions as string[]) : [],
+    dissentOrUnresolved:
+      typeof obj.dissentOrUnresolved === "string" && obj.dissentOrUnresolved.trim()
+        ? obj.dissentOrUnresolved
+        : undefined,
+  };
+}
+
 /** Normalize legacy sessions missing new fields. */
 export function migrateSession(raw: Record<string, unknown>): BoardSession {
   const status = raw.status as BoardSession["status"];
   const turns = (raw.turns as TranscriptTurn[]) ?? [];
-  const briefing = (raw.briefing as ChairBriefing | null) ?? null;
+  const briefing = normalizeStoredBriefing(raw.briefing);
   const glossary = (raw.glossary as Glossary | null) ?? null;
 
   let phase = (raw.phase as SessionPhase | undefined) ?? "kickstart";
@@ -144,7 +171,11 @@ export function migrateSession(raw: Record<string, unknown>): BoardSession {
   const thread = (raw.thread as ThreadItem[] | undefined) ?? [];
   const timeline = (raw.timeline as SessionTimelineEvent[] | undefined) ?? [];
 
-  let migratedThread = thread;
+  let migratedThread = thread.map((item) => {
+    if (item.kind !== "briefing") return item;
+    const payload = normalizeStoredBriefing(item.payload);
+    return payload ? { ...item, payload } : item;
+  });
   if (thread.length === 0 && turns.length > 0) {
     migratedThread = [];
     if (raw.brief) {

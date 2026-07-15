@@ -3,7 +3,10 @@ import { z } from "zod";
 import {
   GLOSSARY_RESPONSE_SAFETY_CAP,
   MAX_BRIEF_CHARS,
-  MAX_TAKEAWAY_CHARS,
+  MAX_BRIEFING_HEADLINE_CHARS,
+  MAX_BRIEFING_LIST_ITEM_CHARS,
+  MAX_BRIEFING_MILESTONE_CHARS,
+  MAX_BRIEFING_PROSE_CHARS,
   MAX_ROLES,
   MAX_TURNS,
   MIN_ROLES,
@@ -15,6 +18,16 @@ function clampText(max: number, value: string): string {
   const cut = value.slice(0, max - 1).trimEnd();
   return cut.length > 0 ? `${cut}…` : value.slice(0, max);
 }
+
+const briefingListItem = z
+  .string()
+  .min(1)
+  .transform((s) => clampText(MAX_BRIEFING_LIST_ITEM_CHARS, s));
+
+const briefingMilestoneItem = z
+  .string()
+  .min(1)
+  .transform((s) => clampText(MAX_BRIEFING_MILESTONE_CHARS, s));
 
 const roleSchema = z
   .object({
@@ -50,21 +63,45 @@ export const meetingPlanSchema = z
 
 export type MeetingPlan = z.infer<typeof meetingPlanSchema>;
 
-export const briefingSchema = z.object({
-  headline: z.string().min(1),
-  keyTakeaways: z
-    .array(z.string().min(1).transform((s) => clampText(MAX_TAKEAWAY_CHARS, s)))
-    .min(2)
-    .max(5),
-  thesis: z.string().min(1),
-  keyRisks: z.array(z.string()).min(1),
-  experiments: z.array(z.string()).min(1),
-  sevenDayPlan: z.array(z.string()).min(1).max(14),
-  openQuestions: z.array(z.string()),
-  dissentOrUnresolved: z.string().optional(),
+const briefingFieldsSchema = z.object({
+  headline: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_BRIEFING_HEADLINE_CHARS, s)),
+  keyTakeaways: z.array(briefingListItem).min(2).max(4),
+  thesis: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_BRIEFING_PROSE_CHARS, s)),
+  keyRisks: z.array(briefingListItem).min(2).max(4),
+  experiments: z.array(briefingListItem).min(2).max(4),
+  suggestedMilestones: z.array(briefingMilestoneItem).min(3).max(4),
+  openQuestions: z.array(briefingListItem).max(3),
+  dissentOrUnresolved: z
+    .string()
+    .min(1)
+    .transform((s) => clampText(MAX_BRIEFING_PROSE_CHARS, s))
+    .optional(),
 });
 
-export type ChairBriefing = z.infer<typeof briefingSchema>;
+/** Accept legacy `sevenDayPlan` and map to `suggestedMilestones` before validation. */
+export const briefingSchema = z.preprocess((raw) => {
+  if (!raw || typeof raw !== "object") return raw;
+  const obj = { ...(raw as Record<string, unknown>) };
+  if (!Array.isArray(obj.suggestedMilestones) && Array.isArray(obj.sevenDayPlan)) {
+    obj.suggestedMilestones = obj.sevenDayPlan;
+  }
+  delete obj.sevenDayPlan;
+  if (
+    obj.dissentOrUnresolved == null ||
+    (typeof obj.dissentOrUnresolved === "string" && !obj.dissentOrUnresolved.trim())
+  ) {
+    delete obj.dissentOrUnresolved;
+  }
+  return obj;
+}, briefingFieldsSchema);
+
+export type ChairBriefing = z.infer<typeof briefingFieldsSchema>;
 
 export const transcriptTurnSchema = z.object({
   id: z.number().int().positive(),
@@ -103,7 +140,7 @@ export const briefingSectionSchema = z.enum([
   "thesis",
   "keyRisks",
   "experiments",
-  "sevenDayPlan",
+  "suggestedMilestones",
   "openQuestions",
   "dissentOrUnresolved",
 ]);

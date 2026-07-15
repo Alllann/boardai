@@ -177,6 +177,8 @@ export function chairBriefingPrompt(params: {
 ${roundNote}
 ${BOARD_AUDIENCE_INSTRUCTIONS}
 
+This memo is rendered as a short slide deck (~24rem tall cards). Write for slides: one idea per card, scannable leads, no padding. Prefer fewer sharper bullets over long prose.
+
 Original brief:
 ---
 ${params.userBrief}
@@ -192,26 +194,32 @@ ${params.transcriptText}
 
 Output ONLY valid JSON (no markdown, no commentary) with this exact shape:
 {
-  "headline": "string — one plain-language line: the board's recommendation (go / no-go / pivot / investigate) and immediate next move",
-  "keyTakeaways": ["string — 2 to 5 insight bullets, plain language, each scannable on its own"],
-  "thesis": "string — the board's synthesized conclusion after debate; tradeoffs and framing in plain language",
-  "keyRisks": ["string"],
-  "experiments": ["string — each item should imply how to validate"],
-  "sevenDayPlan": ["string — ordered steps or day-scoped actions"],
-  "openQuestions": ["string"],
-  "dissentOrUnresolved": "optional string — what the board still disagrees on and what would resolve it"
+  "headline": "string — ≤180 chars, 1 sentence: recommendation (go / no-go / pivot / investigate) + immediate next move",
+  "keyTakeaways": ["string — 2 to 4 bullets; each Lead: detail; ≤180 chars"],
+  "thesis": "string — ≤220 chars, 1–2 sentences: synthesized conclusion and tradeoffs",
+  "keyRisks": ["string — 2 to 4 items; each Lead: detail; ≤180 chars"],
+  "experiments": ["string — 2 to 4 items; each implies how to validate; Lead: detail; ≤180 chars"],
+  "suggestedMilestones": ["string — 3 to 4 verb-led action items; Lead: detail; ≤160 chars each; must fit one slide"],
+  "openQuestions": ["string — 0 to 3 items; Lead: detail; ≤180 chars"],
+  "dissentOrUnresolved": "optional string — ≤220 chars: unresolved disagreement + what would resolve it"
 }
 
+Slide budgets (hard):
+- headline ≤ 180 chars; thesis ≤ 220 chars; dissentOrUnresolved ≤ 220 chars if present.
+- keyTakeaways, keyRisks, experiments: 2–4 items each. openQuestions: 0–3.
+- suggestedMilestones: exactly 3–4 items. Each list item: "Lead: detail" or "Lead — detail"; lead ≤ 70 chars, detail ≤ 100 (milestones detail ≤ 90); item total ≤ 180 (milestones ≤ 160).
+
 Field guidance:
-- headline: Outcome-first for a busy owner. No jargon; do not repeat the 7-day plan verbatim.
-- keyTakeaways: Cross-cutting insights from the debate — not a chronological walkthrough. Each bullet: short lead, then why it matters. Do not reference "as discussed above" without restating the point.
-- thesis: Synthesize the board's position — may be more nuanced than headline/takeaways. Plain language throughout.
-- keyRisks, experiments, openQuestions: Each array item scannable — short lead clause, then why it matters (e.g. "Cash runway: ~4 months at current burn — limits how aggressive the launch can be.").
-- dissentOrUnresolved: Plain-language summary of unresolved debate and what evidence or decision would settle it.
+- headline: Outcome-first BLUF for a busy owner. No jargon; do not restate the milestone list verbatim.
+- keyTakeaways: Cross-cutting insights — not a chronological walkthrough. Each bullet scannable alone.
+- thesis: Synthesize the board's position — may be more nuanced than headline/takeaways.
+- keyRisks, experiments, openQuestions: Short lead, then why it matters (e.g. "Cash runway: ~4 months at current burn — limits how aggressive the launch can be.").
+- suggestedMilestones: Selective action items the owner can do or assign (verb-led), e.g. "Send LOI draft to Acme by Friday: include scope cap and 30-day review." Not a day-by-day calendar, not vague ("think about pricing"). Highest-leverage milestones only.
+- dissentOrUnresolved: Unresolved debate and what evidence or decision would settle it.
 
-Anti-patterns: no transcript walkthrough, no undefined acronyms, no specialist jargon without a plain-language gloss.
+Anti-patterns: no transcript walkthrough, no undefined acronyms, no specialist jargon without a plain-language gloss, no padding to fill fields.
 
-If experts disagreed, use dissentOrUnresolved. Arrays must be non-empty except openQuestions may be empty only if truly none. keyTakeaways must have 2–5 items.`;
+If experts disagreed, use dissentOrUnresolved. Arrays must be non-empty except openQuestions may be empty only if truly none.`;
 }
 
 export function chairBriefingRetryPrompt(params: {

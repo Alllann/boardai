@@ -18,6 +18,8 @@ type SlideLimits = {
   cardDetail: number;
   cardSlideWeight: number;
   maxCardsPerSlide: number;
+  milestoneSlideWeight: number;
+  maxMilestonesPerSlide: number;
   timelineSlideWeight: number;
   maxTimelinePerSlide: number;
   timelineBody: number;
@@ -30,8 +32,10 @@ export const SLIDE_LIMITS: SlideLimits = {
   warningBody: 240,
   cardLead: 85,
   cardDetail: 110,
-  cardSlideWeight: 340,
+  cardSlideWeight: 400,
   maxCardsPerSlide: 2,
+  milestoneSlideWeight: 820,
+  maxMilestonesPerSlide: 4,
   timelineSlideWeight: 320,
   maxTimelinePerSlide: 2,
   timelineBody: 100,
@@ -46,6 +50,8 @@ export const SLIDE_LIMITS_EXPANDED: SlideLimits = {
   cardDetail: 360,
   cardSlideWeight: 900,
   maxCardsPerSlide: 5,
+  milestoneSlideWeight: 1200,
+  maxMilestonesPerSlide: 4,
   timelineSlideWeight: 860,
   maxTimelinePerSlide: 5,
   timelineBody: 280,
@@ -144,9 +150,15 @@ export function condenseBriefingItem(
     return parsed;
   }
 
-  const lead = truncateAtSentence(parsed.lead, limits.cardLead);
+  // Only truncate when the model overshoots slide budgets.
+  const lead =
+    parsed.lead.length > limits.cardLead
+      ? truncateAtSentence(parsed.lead, limits.cardLead)
+      : parsed.lead;
   const detail = parsed.detail
-    ? truncateAtSentence(parsed.detail, limits.cardDetail)
+    ? parsed.detail.length > limits.cardDetail
+      ? truncateAtSentence(parsed.detail, limits.cardDetail)
+      : parsed.detail
     : undefined;
 
   return detail ? { lead, detail } : { lead };
@@ -157,7 +169,9 @@ export function condensePlanText(
   density: BriefingDensity = "compact",
 ): string {
   if (density === "expanded") return text.trim();
-  return truncateAtSentence(text, getSlideLimits(density).timelineBody);
+  const max = getSlideLimits(density).timelineBody;
+  const trimmed = text.trim();
+  return trimmed.length > max ? truncateAtSentence(trimmed, max) : trimmed;
 }
 
 export function estimateCardWeight(

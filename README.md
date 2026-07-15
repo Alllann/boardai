@@ -4,7 +4,7 @@
 
 You bring the question: a business call, a product bet, a strategy fork, or anything else you need to think through. A **chair** proposes who should be in the room — finance, legal, ops, market, regulation, and the rest — and you **invite** the experts you want. They speak in turn, push on each other from their own mandates, and you stay in the thread with them. When the session lands, you get a **glossary** for the jargon and an **executive brief** with takeaways, risks, experiments, and next steps — insight you couldn't get from one generalist voice.
 
-![Live demo — early-stage founder brief with chair goal and suggested expert roster](docs/chat-page.png)
+![Live demo — early-stage founder brief with chair goal and suggested expert roster](docs/BoardAIProductDemo.gif)
 
 **Live demo:** [boardai.vercel.app](https://boardai.vercel.app)
 

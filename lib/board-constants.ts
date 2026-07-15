@@ -15,8 +15,14 @@ export const GLOSSARY_MAX_ENTRIES_PER_PASS = 12;
 /** Safety cap for a single model response (not a session total). */
 export const GLOSSARY_RESPONSE_SAFETY_CAP = 200;
 
-/** Chair briefing key takeaway bullet (model may overshoot; we clamp). */
-export const MAX_TAKEAWAY_CHARS = 280;
+/** Chair briefing field clamps — aligned to compact slide deck budgets. */
+export const MAX_BRIEFING_HEADLINE_CHARS = 180;
+export const MAX_BRIEFING_PROSE_CHARS = 220;
+export const MAX_BRIEFING_LIST_ITEM_CHARS = 180;
+export const MAX_BRIEFING_MILESTONE_CHARS = 160;
+
+/** @deprecated Use MAX_BRIEFING_LIST_ITEM_CHARS */
+export const MAX_TAKEAWAY_CHARS = MAX_BRIEFING_LIST_ITEM_CHARS;
 
 /** Shown immediately when a session starts, before the first API response. */
 export const CHAIR_CONVENING_MESSAGE =

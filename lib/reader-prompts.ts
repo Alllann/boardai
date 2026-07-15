@@ -32,8 +32,8 @@ export function buildReaderBundle(
       ...briefing.experiments.map(
         (e, i) => `[section=experiments index=${i}] ${e}`,
       ),
-      ...briefing.sevenDayPlan.map(
-        (s, i) => `[section=sevenDayPlan index=${i}] ${s}`,
+      ...briefing.suggestedMilestones.map(
+        (s, i) => `[section=suggestedMilestones index=${i}] ${s}`,
       ),
       ...briefing.openQuestions.map(
         (q, i) => `[section=openQuestions index=${i}] ${q}`,

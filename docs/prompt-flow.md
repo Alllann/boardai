@@ -172,7 +172,7 @@ Use the Pyramid Principle / BLUF for the briefing:
 - thesis = deeper synthesis: what to recommend now, what to defer and why, and what evidence or decision unlocks the next step — each tied to transcript content or marked "not specified in session."
 Anti-patterns:
 - Qualifier-only headlines that sound decisive but leave blanks (e.g. "proceed under strict caps" without stating what caps; "named loss-bearing" without naming who; "prove economics before scale" without defining the proof bar).
-- Restating the headline in different words across keyTakeaways, thesis, and sevenDayPlan.
+- Restating the headline in different words across keyTakeaways, thesis, and suggestedMilestones.
 If the debate stayed abstract, put gaps in openQuestions or dissentOrUnresolved — do not invent a polished empty recommendation.
 ```
 
@@ -267,40 +267,25 @@ Do NOT speak for other roles or narrate the meeting meta. No bullet lists. Plain
 
 ## chairBriefingPrompt (`lib/prompts.ts`)
 
+Rendered as a short Reveal slide deck. Write for slide cards — one idea per card, no padding.
+
+Injected: `BOARD_AUDIENCE_INSTRUCTIONS` only (Pyramid/BLUF guidance is inlined in field rules).
+
 ```
-You are the Chair. The board session has finished. Using the submitter's original brief, the meeting plan you designed, and the full transcript, produce a synthesis memo for the submitter — not a transcript recap.
-
-[injected: BOARD_SESSION_PURPOSE]
-[injected: BOARD_AUDIENCE_INSTRUCTIONS]
-[injected: CHAIR_PYRAMID_RULES]
-
-Original brief:
----
-{{userBrief}}
----
-
-Meeting plan (JSON):
-{{meetingPlanJson}}
-
-Transcript:
----
-{{transcriptText}}
----
-
 Output ONLY valid JSON:
 {
-  "headline": "string — BLUF …",
-  "keyTakeaways": ["string — 2 to 5 insight bullets …"],
-  "thesis": "string — board conclusion after debate …",
-  "keyRisks": ["string …"],
-  "experiments": ["string …"],
-  "sevenDayPlan": ["string — ordered next steps …"],
-  "openQuestions": ["string"],
-  "dissentOrUnresolved": "optional string …"
+  "headline": "≤180 chars, 1 sentence — BLUF recommendation + next move",
+  "keyTakeaways": ["2–4 items; Lead: detail; ≤180 chars"],
+  "thesis": "≤220 chars, 1–2 sentences",
+  "keyRisks": ["2–4 items; Lead: detail; ≤180 chars"],
+  "experiments": ["2–4 items; Lead: detail; ≤180 chars"],
+  "suggestedMilestones": ["3–4 verb-led action items; Lead: detail; ≤160 chars; one slide"],
+  "openQuestions": ["0–3 items; Lead: detail; ≤180 chars"],
+  "dissentOrUnresolved": "optional ≤220 chars"
 }
-
-Field guidance + anti-patterns …
 ```
+
+`suggestedMilestones` replaces the old `sevenDayPlan`: selective owner action items, not a day-by-day calendar. Schema clamps match these budgets; legacy sessions map `sevenDayPlan` → `suggestedMilestones` on load.
 
 ---
 
